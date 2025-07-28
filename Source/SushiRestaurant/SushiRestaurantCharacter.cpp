@@ -10,11 +10,14 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "ActorComponent/InteractionComponent.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
 ASushiRestaurantCharacter::ASushiRestaurantCharacter()
 {
+	//
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 		
@@ -56,16 +59,9 @@ void ASushiRestaurantCharacter::SetupPlayerInputComponent(UInputComponent* Playe
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 		
-		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-
+		
 		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Move);
-		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Look);
-
-		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Look);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Move);		
 	}
 	else
 	{
@@ -82,14 +78,21 @@ void ASushiRestaurantCharacter::Move(const FInputActionValue& Value)
 	DoMove(MovementVector.X, MovementVector.Y);
 }
 
-void ASushiRestaurantCharacter::Look(const FInputActionValue& Value)
+void ASushiRestaurantCharacter::Interact(const FInputActionValue& Value)
 {
-	// input is a Vector2D
-	FVector2D LookAxisVector = Value.Get<FVector2D>();
+	const bool bIsPressed = Value.Get<bool>();
 
-	// route the input
-	DoLook(LookAxisVector.X, LookAxisVector.Y);
+	if(bIsPressed)
+	{
+		DoInteract();
+		
+	}
 }
+
+void ASushiRestaurantCharacter::Run(const FInputActionValue& Value)
+{
+}
+
 
 void ASushiRestaurantCharacter::DoMove(float Right, float Forward)
 {
@@ -111,24 +114,15 @@ void ASushiRestaurantCharacter::DoMove(float Right, float Forward)
 	}
 }
 
-void ASushiRestaurantCharacter::DoLook(float Yaw, float Pitch)
+void ASushiRestaurantCharacter::DoInteract()
 {
-	if (GetController() != nullptr)
+	if (InteractionComponent)
 	{
-		// add yaw and pitch input to controller
-		AddControllerYawInput(Yaw);
-		AddControllerPitchInput(Pitch);
+		InteractionComponent->TryInteract();
 	}
 }
 
-void ASushiRestaurantCharacter::DoJumpStart()
+void ASushiRestaurantCharacter::DoRun()
 {
-	// signal the character to jump
-	Jump();
 }
 
-void ASushiRestaurantCharacter::DoJumpEnd()
-{
-	// signal the character to stop jumping
-	StopJumping();
-}
