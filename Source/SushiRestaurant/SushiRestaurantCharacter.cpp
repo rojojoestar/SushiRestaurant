@@ -10,6 +10,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "Net/UnrealNetwork.h"
 #include "ActorComponent/InteractionComponent.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -116,13 +117,61 @@ void ASushiRestaurantCharacter::DoMove(float Right, float Forward)
 
 void ASushiRestaurantCharacter::DoInteract()
 {
+	if (CarriedActor)
+	{
+		// Drop the carried actor if already holding one
+		DetachCarriedActor();
+		return;
+	}
+
 	if (InteractionComponent)
 	{
 		InteractionComponent->TryInteract();
 	}
 }
 
+
 void ASushiRestaurantCharacter::DoRun()
 {
+}
+
+void ASushiRestaurantCharacter::AttachActor(AActor* ActorToAttach)
+{
+	if (!ActorToAttach)
+		return;
+
+	// Attach to a socket on the mesh, or just to the root
+	ActorToAttach->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("hand_rSocket")); // Replace with your socket name
+	CarriedActor = ActorToAttach;
+}
+
+void ASushiRestaurantCharacter::DetachCarriedActor()
+{
+	if (CarriedActor)
+	{
+		// Detach actor from character
+		CarriedActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+		// Reactivate physics if it has a mesh
+		if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(CarriedActor->GetComponentByClass(UStaticMeshComponent::StaticClass())))
+		{
+			Mesh->SetSimulatePhysics(true);
+		}
+
+		CarriedActor = nullptr;
+	}
+}
+
+
+AActor* ASushiRestaurantCharacter::GetCarriedActor() const
+{
+	return CarriedActor;
+}
+
+void ASushiRestaurantCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ASushiRestaurantCharacter, CarriedActor);
 }
 

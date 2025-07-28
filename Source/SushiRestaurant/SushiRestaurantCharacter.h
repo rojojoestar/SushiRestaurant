@@ -45,10 +45,23 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	UInputAction* RunAction;
 
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category="Carry")
+	AActor* CarriedActor;
+
 public:
 
 	/** Constructor */
-	ASushiRestaurantCharacter();	
+	ASushiRestaurantCharacter();
+	
+	// Return currently carried actor
+	AActor* GetCarriedActor() const;
+	
+	// Attach an actor to the character
+	void AttachActor(AActor* ActorToAttach);
+
+	// Detach the currently held actor
+	void DetachCarriedActor();
+
 
 protected:
 
@@ -64,6 +77,12 @@ protected:
 	void Interact(const FInputActionValue& Value);
 	/** Called for Run input */
 	void Run(const FInputActionValue& Value);
+
+	
+	
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 
 	/** */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction", meta = (AllowPrivateAccess = "true"))
