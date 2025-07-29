@@ -6,6 +6,7 @@
 
 class UBoxComponent;
 class ACookwareStation;
+class APickupActor;
 
 UCLASS()
 class ADropZone : public AActor
@@ -16,11 +17,11 @@ public:
 	ADropZone();
 
 protected:
-	// Visible drop area
+	// Collision zone where pickups can be dropped
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Drop Zone")
 	UBoxComponent* ZoneTrigger;
 
-	// Associated station
+	// Linked cookware station
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Drop Zone")
 	ACookwareStation* LinkedStation;
 

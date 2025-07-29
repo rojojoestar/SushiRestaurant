@@ -1,37 +1,50 @@
 #include "PickupActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "SushiRestaurantCharacter.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 // Sets default values
 APickupActor::APickupActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// Setup static mesh
+	// Setup mesh component
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	RootComponent = MeshComponent;
 
-	// Enable physics by default (optional)
+	// Enable physics for interaction
 	MeshComponent->SetSimulatePhysics(true);
+
+	// Default ingredient values
+	IngredientType = EIngredientType::None;
+	IngredientState = EIngredientState::Raw;
 }
 
-// When the player interacts
+// Interaction with character
 void APickupActor::Interact(APawn* Interactor)
 {
-	if (!Interactor)
-		return;
+	if (!Interactor) return;
 
 	ASushiRestaurantCharacter* Character = Cast<ASushiRestaurantCharacter>(Interactor);
-	if (!Character)
-		return;
+	if (!Character) return;
 
 	// If already carrying something, do nothing
-	if (Character->GetCarriedActor())
-		return;
+	if (Character->GetCarriedActor()) return;
 
-	// Stop physics simulation before attaching
+	// Disable physics before attachment
 	MeshComponent->SetSimulatePhysics(false);
 
-	// Attach this actor to the character
+	// Attach to character
 	Character->AttachActor(this);
+
+	// Debug print for clarity
+	FString TypeStr = UEnum::GetValueAsString(IngredientType);
+	FString StateStr = UEnum::GetValueAsString(IngredientState);
+	UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Picked up: %s (%s)"), *TypeStr, *StateStr), true, true, FLinearColor::Green, 1.5f);
+}
+
+// Change ingredient state externally
+void APickupActor::SetIngredientState(EIngredientState NewState)
+{
+	IngredientState = NewState;
 }

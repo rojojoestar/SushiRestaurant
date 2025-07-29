@@ -12,8 +12,8 @@ AIngredientActor::AIngredientActor()
 	RootComponent = MeshComponent;
 
 	// Set initial ingredient values
-	IngredientType = EIngredientType::None;
-	IngredientState = EIngredientState::Raw;
+	IngredientTypes = EIngredientTypes::None;
+	IngredientStates = EIngredientStates::Raw;
 }
 
 // Called when the game starts or when spawned
@@ -32,8 +32,8 @@ void AIngredientActor::Tick(float DeltaTime)
 void AIngredientActor::Interact(APawn* Interactor)
 {
 	// Print interaction debug log
-	FString TypeString = UEnum::GetValueAsString(IngredientType);
-	FString StateString = UEnum::GetValueAsString(IngredientState);
+	FString TypeString = UEnum::GetValueAsString(IngredientTypes);
+	FString StateString = UEnum::GetValueAsString(IngredientStates);
 	UE_LOG(LogTemp, Log, TEXT("Ingredient Interacted: Type = %s | State = %s"), *TypeString, *StateString);
 
 	// Optional: visualize with debug

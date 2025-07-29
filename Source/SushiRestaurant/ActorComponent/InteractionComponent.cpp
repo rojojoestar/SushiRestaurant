@@ -32,6 +32,7 @@ IInteractable* UInteractionComponent::GetInteractableInFront() const
 
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Hit actor: %s"), *Hit.GetActor()->GetName());
 		return Cast<IInteractable>(Hit.GetActor());
 	}
 

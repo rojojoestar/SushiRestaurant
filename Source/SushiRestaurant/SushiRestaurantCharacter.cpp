@@ -58,11 +58,16 @@ ASushiRestaurantCharacter::ASushiRestaurantCharacter()
 void ASushiRestaurantCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
-		
-		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Move);		
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) 
+	{
+		// Movement
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Move);
+
+		// Interact
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ASushiRestaurantCharacter::Interact);
+
+		// Run (si quieres usarlo más adelante)
+		EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Run);
 	}
 	else
 	{
@@ -117,6 +122,7 @@ void ASushiRestaurantCharacter::DoMove(float Right, float Forward)
 
 void ASushiRestaurantCharacter::DoInteract()
 {
+	UE_LOG(LogTemp, Warning, TEXT("DoInteract() called"));
 	if (CarriedActor)
 	{
 		// Drop the carried actor if already holding one
@@ -153,9 +159,9 @@ void ASushiRestaurantCharacter::DetachCarriedActor()
 		CarriedActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
 		// Reactivate physics if it has a mesh
-		if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(CarriedActor->GetComponentByClass(UStaticMeshComponent::StaticClass())))
+		if (UStaticMeshComponent* MeshComponent = Cast<UStaticMeshComponent>(CarriedActor->GetComponentByClass(UStaticMeshComponent::StaticClass())))
 		{
-			Mesh->SetSimulatePhysics(true);
+			MeshComponent->SetSimulatePhysics(true);
 		}
 
 		CarriedActor = nullptr;

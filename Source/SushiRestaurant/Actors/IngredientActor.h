@@ -7,7 +7,7 @@
 
 // Enumeration for ingredient states
 UENUM(BlueprintType)
-enum class EIngredientState : uint8
+enum class EIngredientStates : uint8
 {
 	Raw     UMETA(DisplayName = "Raw"),
 	Sliced  UMETA(DisplayName = "Sliced"),
@@ -17,7 +17,7 @@ enum class EIngredientState : uint8
 
 // Enumeration for ingredient types
 UENUM(BlueprintType)
-enum class EIngredientType : uint8
+enum class EIngredientTypes : uint8
 {
 	None    UMETA(DisplayName = "None"),
 	Fish    UMETA(DisplayName = "Fish"),
@@ -44,11 +44,11 @@ protected:
 
 	// Ingredient type
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ingredient")
-	EIngredientType IngredientType;
+	EIngredientTypes IngredientTypes;
 
 	// Current state of the ingredient
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ingredient")
-	EIngredientState IngredientState;
+	EIngredientStates IngredientStates;
 
 public:
 	// Called every frame
@@ -58,9 +58,9 @@ public:
 	virtual void Interact(APawn* Interactor) override;
 
 	// Getters
-	EIngredientType GetIngredientType() const { return IngredientType; }
-	EIngredientState GetIngredientState() const { return IngredientState; }
+	EIngredientTypes GetIngredientTypes() const { return IngredientTypes; }
+	EIngredientStates GetIngredientStates() const { return IngredientStates; }
 
 	// Setters
-	void SetIngredientState(EIngredientState NewState) { IngredientState = NewState; }
+	void SetIngredientState(EIngredientStates NewState) { IngredientStates = NewState; }
 };
