@@ -25,5 +25,18 @@ protected:
 
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
+	
+
+	// Reference to Game Over Widget class
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UUserWidget> GameOverWidgetClass;
+
+	// Active widget
+	UPROPERTY()
+	UUserWidget* GameOverWidget;
+
+public:
+	UFUNCTION()
+	void HandleMatchEnded();
 
 };

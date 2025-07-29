@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "OrderManager.generated.h"
 
+class URecipeAsset;
+
 // Defines an order made by a table
 USTRUCT(BlueprintType)
 struct FOrder
@@ -65,4 +67,7 @@ public:
 	// Returns list of active orders
 	UFUNCTION(BlueprintPure)
 	const TArray<FOrder>& GetActiveOrders() const { return ActiveOrders; }
+
+	UPROPERTY(EditAnywhere, Category = "Orders")
+	TArray<URecipeAsset*> AvailableRecipes;
 };

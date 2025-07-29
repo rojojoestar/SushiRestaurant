@@ -56,7 +56,7 @@ bool APlateActor::TryAddIngredient(AIngredientActor* Ingredient)
 	UpdateIngredientPlacement();
 
 	// Track ingredient type
-	CurrentIngredients.Add(Ingredient->GetIngredientTypes());
+	CurrentIngredients.Add(TArray<EIngredientType>::ElementType(Ingredient->GetIngredientTypes()));
 
 	return true;
 }

@@ -1,5 +1,6 @@
 #include "OrderManager.h"
 #include "PickupActor.h"
+#include "Misc/RecipeAsset.h"
 #include "Net/UnrealNetwork.h"
 
 AOrderManager::AOrderManager()
@@ -34,12 +35,21 @@ void AOrderManager::Tick(float DeltaTime)
 // Spawns a new random order
 void AOrderManager::GenerateNewOrder()
 {
-	FOrder NewOrder;
-	NewOrder.TableID = FMath::RandRange(1, 4); // Random table
-	NewOrder.RemainingTime = OrderTimeLimit;
+	if (AvailableRecipes.Num() == 0) return;
 
-	// Sample hardcoded recipe (Fish + Seaweed)
-	NewOrder.RequiredIngredients = { EIngredientType::Fish, EIngredientType::Seaweed };
+	if (AvailableRecipes.Num() > 0)
+	{
+		int32 Index = FMath::RandRange(0, AvailableRecipes.Num() - 1);
+		// Use AvailableRecipes[Index]
+	}
+	
+	int32 Index = FMath::RandRange(0, AvailableRecipes.Num() - 1);
+	const URecipeAsset* SelectedRecipe = AvailableRecipes[Index];
+
+	FOrder NewOrder;
+	NewOrder.TableID = FMath::RandRange(1, 4);
+	NewOrder.RemainingTime = OrderTimeLimit;
+	NewOrder.RequiredIngredients = SelectedRecipe->Recipe.RequiredIngredients;
 
 	ActiveOrders.Add(NewOrder);
 }

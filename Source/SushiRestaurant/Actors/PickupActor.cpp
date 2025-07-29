@@ -43,8 +43,3 @@ void APickupActor::Interact(APawn* Interactor)
 	UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Picked up: %s (%s)"), *TypeStr, *StateStr), true, true, FLinearColor::Green, 1.5f);
 }
 
-// Change ingredient state externally
-void APickupActor::SetIngredientState(EIngredientState NewState)
-{
-	IngredientState = NewState;
-}

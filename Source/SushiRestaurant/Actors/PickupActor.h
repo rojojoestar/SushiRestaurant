@@ -41,21 +41,20 @@ protected:
 
 	// Ingredient type
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ingredient")
-	EIngredientType IngredientType;
+	EIngredientType IngredientType = EIngredientType::None;
 
 	// Ingredient processing state
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ingredient")
-	EIngredientState IngredientState;
+	EIngredientState IngredientState = EIngredientState::Raw;
 
 public:
 	// Interaction logic
 	virtual void Interact(APawn* Interactor) override;
 
 	// Getters
-	FORCEINLINE UStaticMeshComponent* GetMeshComponent() const { return MeshComponent; }
-	FORCEINLINE EIngredientType GetIngredientType() const { return IngredientType; }
-	FORCEINLINE EIngredientState GetIngredientState() const { return IngredientState; }
-
+	EIngredientType GetIngredientType() const { return IngredientType; }
+	EIngredientState GetIngredientState() const { return IngredientState; }
+	
 	// Setter for processing state
-	void SetIngredientState(EIngredientState NewState);
+	void SetIngredientState(EIngredientState NewState) { IngredientState = NewState; }
 };
