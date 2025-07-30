@@ -7,6 +7,8 @@ ASushiRestaurantGameMode::ASushiRestaurantGameMode()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	TimeRemaining = MatchDuration;
+	SelectedGameModeClass = nullptr;
+	SelectedGameModeInstance = nullptr;
 }
 
 // ---------- Lifecycle ----------

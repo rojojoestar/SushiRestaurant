@@ -20,6 +20,8 @@ public:
 	/** Constructor */
 	APlateActor();
 
+	virtual void BeginPlay() override;
+
 	/** IInteractable: Called when the player interacts with this plate */
 	virtual void Interact_Implementation(APawn* Interactor) override;
 

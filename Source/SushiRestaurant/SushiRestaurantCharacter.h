@@ -20,6 +20,15 @@ public:
 	// -- Public API --
 	ASushiRestaurantCharacter();
 
+	UFUNCTION(BlueprintPure, Category="Carry")
+	bool IsCarrying() const { return CarriedActor != nullptr; }
+
+	UFUNCTION(BlueprintPure, Category="Station")
+	bool IsProcessingAtStation() const { return bIsProcessingAtStation; }
+
+	// Call from the station to start/finish the process
+	void SetIsProcessingAtStation(bool bNewValue);
+
 	/** Returns the actor currently carried (if any). */
 	AActor* GetCarriedActor() const { return CarriedActor; }
 
@@ -66,6 +75,12 @@ protected:
 	/** Drops the carried actor properly (calls StopInteract on it). */
 	UFUNCTION(BlueprintCallable, Category="Interaction")
 	void DropCarriedActor();
+
+
+	// Bool for animation (Replicated if you look another players
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category="Station")
+	bool bIsProcessingAtStation = false;
+	
 
 	// -- Internals --
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

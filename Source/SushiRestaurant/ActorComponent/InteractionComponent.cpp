@@ -1,6 +1,5 @@
 #include "InteractionComponent.h"
 #include "Interface/InteractableInterface.h"
-#include "Actors/PickupActor.h"
 #include "GameFramework/Actor.h"
 
 UInteractionComponent::UInteractionComponent()
@@ -30,52 +29,40 @@ void UInteractionComponent::TryInteract()
 
 AActor* UInteractionComponent::GetInteractableInFront() const
 {
-	// Start slightly above ground to avoid floor hits
-	const FVector Start = GetOwner()->GetActorLocation() + FVector(0.f, 0.f, 50.f);
-	const FVector End   = Start + GetOwner()->GetActorForwardVector() * 200.f;
+	const FVector Start = GetOwner()->GetActorLocation() + FVector(0, 0, 50.f);
+	const FVector End   = Start + GetOwner()->GetActorForwardVector() * 300.f;
 	const float Radius  = 150.f;
 
 	TArray<FHitResult> Hits;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(GetOwner());
 
-	const bool bHit = GetWorld()->SweepMultiByChannel(
-		Hits,
-		Start,
-		End,
-		FQuat::Identity,
-		ECC_Visibility,
-		FCollisionShape::MakeSphere(Radius),
-		Params
-	);
+	bool bHit = GetWorld()->SweepMultiByChannel(
+		Hits, Start, End, FQuat::Identity, ECC_Visibility, FCollisionShape::MakeSphere(Radius), Params);
 
-	if (!bHit) return nullptr;
+	AActor* ClosestInteractable = nullptr;
+	float MinDistSq = TNumericLimits<float>::Max();
 
-	AActor* Closest = nullptr;
-	float MinDist = TNumericLimits<float>::Max();
-
-	for (const FHitResult& HitResult : Hits)
+	if (bHit)
 	{
-		AActor* HitActor = HitResult.GetActor();
-		if (!HitActor) continue;
-
-		// Aceptar cualquier actor que implemente la interfaz IInteractable
-		if (HitActor->GetClass()->ImplementsInterface(UInteractable::StaticClass()))
+		for (const FHitResult& H : Hits)
 		{
-			float Dist = FVector::Dist(Start, HitActor->GetActorLocation());
-			if (Dist < MinDist)
+			AActor* HitActor = H.GetActor();
+			if (!HitActor) continue;
+
+			// Accept anything that implements the Interactable interface (Pickup, Plate, Spawner, Stations, etc.)
+			if (HitActor->GetClass()->ImplementsInterface(UInteractable::StaticClass()))
 			{
-				MinDist = Dist;
-				Closest = HitActor;
+				const float DistSq = FVector::DistSquared(Start, HitActor->GetActorLocation());
+				if (DistSq < MinDistSq)
+				{
+					MinDistSq = DistSq;
+					ClosestInteractable = HitActor;
+				}
 			}
 		}
 	}
 
-	if (Closest)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Closest pickup: %s"), *Closest->GetName());
-		return Closest;
-	}
-
-	return Closest;
+	return ClosestInteractable;
 }
+

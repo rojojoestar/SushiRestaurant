@@ -17,6 +17,14 @@ class ASushiRestaurantGameMode : public AGameModeBase
 public:
 	ASushiRestaurantGameMode();
 
+	// Clase del GameMode que se puede seleccionar desde el Editor
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameMode")
+	TSubclassOf<AGameModeBase> SelectedGameModeClass;
+
+	// Instancia del GameMode seleccionado (opcional, si lo quieres instanciar manualmente)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameMode")
+	AGameModeBase* SelectedGameModeInstance;
+
 	/** Remaining time in seconds. */
 	UFUNCTION(BlueprintPure, Category="Game Timer")
 	float GetRemainingTime() const { return TimeRemaining; }

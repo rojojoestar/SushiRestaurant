@@ -7,11 +7,22 @@ APlateActor::APlateActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
+	
 	// Setup plate mesh as root
 	PlateMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlateMesh"));
 	RootComponent = PlateMesh;
 
 	MaxIngredients = 3;
+}
+
+void APlateActor::BeginPlay()
+{
+	Super::BeginPlay();
+
+	PlateMesh->SetCollisionProfileName(TEXT("PhysicsActor")); // o BlockAllDynamic si no es físico
+	PlateMesh->SetSimulatePhysics(false); // por defecto sin físicas
+
+
 }
 
 /** Player interacts with the plate */
@@ -22,20 +33,21 @@ void APlateActor::Interact_Implementation(APawn* Interactor)
 	ASushiRestaurantCharacter* Player = Cast<ASushiRestaurantCharacter>(Interactor);
 	if (!Player) return;
 
-	// If player is holding an ingredient -> try to add it
-	if (APickupActor* Ingredient = Cast<APickupActor>(Player->GetCarriedActor()))
-	{
-		if (TryAddIngredient(Ingredient))
-		{
-			// Detach from player after adding
-			Player->DetachCarriedActor();
-		}
-	}
-	// If player is empty-handed -> pick up the plate
-	else if (!Player->GetCarriedActor())
-	{
-		Player->AttachActor(this);
-	}
+	// Si ya lleva algo en las manos, no puede recoger
+	if (Player->GetCarriedActor()) return;
+
+	// 1. Deactive Physics & Collisions before attach
+	PlateMesh->SetSimulatePhysics(false);
+	PlateMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	PlateMesh->SetEnableGravity(false);
+
+	// 2. Attach to socket
+	AttachToComponent(Player->GetMesh(), 
+		FAttachmentTransformRules::SnapToTargetNotIncludingScale, 
+		TEXT("hand_rSocket"));
+
+	// 3. Registry Player that is carrying the actor
+	Player->SetCarriedActor(this);
 }
 
 void APlateActor::StopInteract_Implementation(APawn* Interactor)
@@ -49,11 +61,32 @@ void APlateActor::StopInteract_Implementation(APawn* Interactor)
 	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	Character->SetCarriedActor(nullptr);
 
+	// Search the ground under the character
+	FVector Start = GetActorLocation();
+	FVector End = Start - FVector(0, 0, 500.f); // 5m hacia abajo
+	FHitResult Hit;
+
+	bool bHasGround = GetWorld()->LineTraceSingleByChannel(
+		Hit, Start, End, ECC_WorldStatic
+	);
+
+
 	// Reactivate physics and collision so the plate drops naturally
 	if (UStaticMeshComponent* Mesh = FindComponentByClass<UStaticMeshComponent>())
 	{
-		Mesh->SetSimulatePhysics(true);
-		Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		if (bHasGround)
+		{
+			// Colócalo justo sobre el suelo y activa físicas
+			SetActorLocation(Hit.ImpactPoint + FVector(0, 0, 2.f));
+			Mesh->SetSimulatePhysics(true);
+			Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		}
+		else
+		{
+			// Si no hay suelo, lo dejamos quieto sin físicas
+			Mesh->SetSimulatePhysics(false);
+			Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		}
 	}
 
 	// Optional: small forward offset to avoid clipping
@@ -68,18 +101,34 @@ bool APlateActor::TryAddIngredient(APickupActor* Ingredient)
 	if (!Ingredient || Ingredients.Num() >= MaxIngredients)
 		return false;
 
-	// Do not allow raw ingredients on plate
+	// If this pickup is a final dish (e.g., Sushi), attach it and mark plate as "complete dish"
+	if (Ingredient->GetFinalDish())
+	{
+		// Attach visually to the plate
+		Ingredient->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
+		Ingredients.Add(Ingredient);
+
+		// Mark this plate as holding a final dish
+		FinalDish = Ingredient->GetFinalDish();
+
+		// Optional: Clean CurrentIngredients or leave them as is (they are irrelevant now)
+		CurrentIngredients.Reset();
+
+		UpdateIngredientPlacement();
+		return true;
+	}
+
+	// Only allow processed ingredients (no raw) for non-final items
 	if (Ingredient->GetIngredientState() == EIngredientState::Raw)
 		return false;
 
-	// Attach to plate mesh
 	Ingredient->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
 	Ingredients.Add(Ingredient);
 
-	// Track type and reposition visuals
+	// Track simplified type list for non-final recipes (optional legacy path)
 	CurrentIngredients.Add(Ingredient->GetIngredientType());
-	UpdateIngredientPlacement();
 
+	UpdateIngredientPlacement();
 	return true;
 }
 

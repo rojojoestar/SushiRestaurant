@@ -50,22 +50,37 @@ void ADropZone::OnZoneBeginOverlap(UPrimitiveComponent* /*OverlappedComp*/, AAct
 	{
 		if (PawnsInside.Num() == 0) return;
 
+		// Elegimos el pawn más cercano al Pickup como “instigador”
+		APawn* InstigatorPawn = nullptr;
+		{
+			float BestDistSq = TNumericLimits<float>::Max();
+			for (const TWeakObjectPtr<APawn>& WeakPawn : PawnsInside)
+			{
+				if (APawn* P = WeakPawn.Get())
+				{
+					const float DistSq = FVector::DistSquared(P->GetActorLocation(), Pickup->GetActorLocation());
+					if (DistSq < BestDistSq)
+					{
+						BestDistSq = DistSq;
+						InstigatorPawn = P;
+					}
+				}
+			}
+		}
+
+		// Desactivar físicas y encajar en PlacePoint como ya hacías
 		if (UStaticMeshComponent* Mesh = Pickup->FindComponentByClass<UStaticMeshComponent>())
 		{
 			Mesh->SetSimulatePhysics(false);
 			Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		}
 
-		// Snap to station point with a tiny delay to ensure transforms are valid
-		FTimerHandle DelayHandle;
-		GetWorld()->GetTimerManager().SetTimer(DelayHandle, [this, Pickup]()
+		// Adjuntar y notificar a la estación (con Pawn)
+		if (LinkedStation && LinkedStation->PlacePoint)
 		{
-			if (IsValid(LinkedStation) && IsValid(Pickup) && LinkedStation->PlacePoint)
-			{
-				Pickup->AttachToComponent(LinkedStation->PlacePoint, FAttachmentTransformRules::SnapToTargetIncludingScale);
-				LinkedStation->ReceiveDroppedPickup(Pickup);
-			}
-		}, 0.05f, false);
+			Pickup->AttachToComponent(LinkedStation->PlacePoint, FAttachmentTransformRules::SnapToTargetIncludingScale);
+			LinkedStation->ReceiveDroppedPickup(Pickup, InstigatorPawn);
+		}
 	}
 }
 

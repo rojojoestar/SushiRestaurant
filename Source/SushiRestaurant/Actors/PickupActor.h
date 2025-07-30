@@ -40,28 +40,56 @@ public:
 	// -- Public API --
 	APickupActor();
 
-	// IInteractable
+	/** IInteractable */
 	virtual void Interact_Implementation(APawn* Interactor) override;
 	virtual void StopInteract_Implementation(APawn* Interactor) override;
 
-	// Getters/Setters
-	EIngredientType  GetIngredientType()  const { return IngredientType; }
+	/** Returns the ingredient type */
+	EIngredientType GetIngredientType() const { return IngredientType; }
+
+	/** Optional setter if spawners need to set type in C++ */
+	void SetIngredientType(EIngredientType NewType) { IngredientType = NewType; }
+
+	/** Returns current processing state */
 	EIngredientState GetIngredientState() const { return IngredientState; }
-	void SetIngredientState(EIngredientState NewState) { IngredientState = NewState; }
+
+	/** Updates state and applies the visual change (server) */
+	void SetIngredientState(EIngredientState NewState);
+
+	/** Final dish accessor */
+	TSubclassOf<URecipeAsset> GetFinalDish() const { return FinalDish; }
+	void SetFinalDish(TSubclassOf<URecipeAsset> InDish) { FinalDish = InDish; }
 
 protected:
-	// -- Components --
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
 
-	// -- Data --
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Ingredient")
+	/** Type of ingredient (Fish, Rice, Seaweed, etc.) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ingredient")
 	EIngredientType IngredientType = EIngredientType::None;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ingredient")
+	/** Processing state (replicated) */
+	UPROPERTY(ReplicatedUsing=OnRep_IngredientState, VisibleAnywhere, BlueprintReadOnly, Category = "Ingredient")
 	EIngredientState IngredientState = EIngredientState::Raw;
 
-	/** Optional: the final dish this pickup represents (used when placed on a plate). */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Plate")
+	/** Optional "final dish" data asset class (e.g., Sushi) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Plate")
 	TSubclassOf<URecipeAsset> FinalDish;
+
+	/** Meshes per state; if set, the mesh will update automatically when state changes */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visual")
+	TMap<EIngredientState, UStaticMesh*> StateMeshes;
+	
+	virtual void BeginPlay() override;
+
+	/** Applies the static mesh that corresponds to current IngredientState (if any) */
+	void ApplyStateVisuals();
+
+	/** Replication notification for IngredientState */
+	UFUNCTION()
+	void OnRep_IngredientState();
+
+	/** Replication setup */
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 };

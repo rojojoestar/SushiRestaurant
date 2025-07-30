@@ -8,6 +8,8 @@
 #include "CookwareStation.generated.h"
 
 class UWidgetComponent;
+class APickupActor;
+class URecipeAsset;
 
 /**
  * CookwareStation: Represents a cooking station (e.g. cutting board, stove)
@@ -16,66 +18,90 @@ class UWidgetComponent;
 UCLASS()
 class ACookwareStation : public AActor, public IInteractable
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	ACookwareStation();
+    ACookwareStation();
 
-	/** IInteractable: Player can interact with station manually */
-	virtual void Interact(APawn* Interactor);
+    /** IInteractable */
+    virtual void Interact_Implementation(APawn* Interactor) override;
 
-	/** Called by DropZone when a pickup is dropped into the station */
-	void ReceiveDroppedPickup(APickupActor* Pickup);
+    /** Called by DropZone when a pickup is dropped inside */
+    void ReceiveDroppedPickup(APickupActor* Pickup, APawn* InstigatorPawn);
 
-	/** Called by Interact when station already has a pickup */
-	void TryProcessExistingPickup(APawn* Interactor);
-
-	/** Scene component where ingredients are placed when dropped */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking")
-	USceneComponent* PlacePoint;
+    /** Place Point for pickup anchoring */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Cooking")
+    USceneComponent* PlacePoint;
 
 protected:
-	/** Main mesh for the station */
-	UPROPERTY(VisibleAnywhere, Category = "Components")
-	UStaticMeshComponent* MeshComponent;
+    /** Visual mesh */
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    UStaticMeshComponent* MeshComponent;
 
-	/** Widget showing progress (optional) */
-	UPROPERTY(VisibleAnywhere, Category = "UI")
-	UWidgetComponent* ProgressWidget;
+    /** Optional UI widget (progress) */
+    UPROPERTY(VisibleAnywhere, Category = "UI")
+    UWidgetComponent* ProgressWidget;
 
-	/** Type of station (used to validate ingredients) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cookware")
-	ECookwareType CookwareType;
+    /** Station type */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cookware")
+    ECookwareType CookwareType = ECookwareType::CuttingBoard;
 
-	/** Current ingredient being processed */
-	UPROPERTY(Replicated, VisibleAnywhere, Category = "Cookware")
-	APickupActor* CurrentPickup;
+    /** Currently processed pickup (single-item stations) */
+    UPROPERTY(Replicated, VisibleAnywhere, Category = "Cookware")
+    APickupActor* CurrentPickup = nullptr;
 
-	/** Processing state flag */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cookware")
-	bool bIsProcessing;
+    /** Is currently processing */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cookware")
+    bool bIsProcessing = false;
 
-	/** Time it takes to process an ingredient */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cookware")
-	float ProcessingTime;
+    /** Time to process */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cookware")
+    float ProcessingTime = 2.0f;
 
-	/** Offset to adjust PlacePoint position */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking")
-	FVector PlacePointOffset = FVector(0.f, 0.f, 20.f);
+    /** Offset for PlacePoint */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking")
+    FVector PlacePointOffset = FVector(0.f, 0.f, 20.f);
 
-	/** Timer handle for processing */
-	FTimerHandle ProcessingTimerHandle;
+    /** Timer for processing */
+    FTimerHandle ProcessingTimerHandle;
+
+    /** Pawn who initiated processing (for animation) */
+    UPROPERTY()
+    APawn* LastInteractorPawn = nullptr;
+
+    // -------- Mixing Table support --------
+
+    /** Only used when CookwareType == MixingTable: cached pickups inside the table */
+    UPROPERTY(VisibleAnywhere, Category="Mixing")
+    TArray<APickupActor*> BufferPickups;
+
+    /** Max items for mixing (Fish + Rice + Seaweed = 3) */
+    UPROPERTY(EditDefaultsOnly, Category="Mixing")
+    int32 MaxBufferSize = 3;
+
+    /** Class to spawn for the final sushi pickup (visual + interactable) */
+    UPROPERTY(EditDefaultsOnly, Category="Mixing")
+    TSubclassOf<APickupActor> SushiPickupClass;
+
+    /** Recipe asset that identifies the final dish "Sushi" */
+    UPROPERTY(EditDefaultsOnly, Category="Mixing")
+    TSubclassOf<URecipeAsset> SushiRecipeAsset;
 
 protected:
-	/** Checks if ingredient is valid for this station */
-	bool CanProcessPickup(APickupActor* Pickup) const;
+    /** Validate if this pickup can be processed by this station */
+    bool CanProcessPickup(APickupActor* Pickup) const;
 
-	/** Starts the processing timer */
-	void StartProcessing();
+    /** Start processing timer */
+    void StartProcessing();
 
-	/** Called when timer completes, updates ingredient state */
-	void CompleteProcessing();
+    /** Called when timer completes */
+    void CompleteProcessing();
 
-	/** Replication setup */
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    /** Helpers for mixing logic */
+    bool CanAcceptInBuffer(APickupActor* Pickup) const;
+    bool HasValidSushiMix() const;
+    void ArrangeBufferOnTable() const;
+    void ProduceSushiResult(); // creates a Sushi pickup with FinalDish set
+
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

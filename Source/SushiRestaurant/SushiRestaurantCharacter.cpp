@@ -97,6 +97,11 @@ void ASushiRestaurantCharacter::DoRun()
 {
 }
 
+void ASushiRestaurantCharacter::SetIsProcessingAtStation(bool bNewValue)
+{
+	bIsProcessingAtStation = bNewValue;
+}
+
 // ---------- Carry helpers ----------
 void ASushiRestaurantCharacter::AttachActor(AActor* ActorToAttach)
 {
@@ -138,4 +143,5 @@ void ASushiRestaurantCharacter::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ASushiRestaurantCharacter, CarriedActor);
+	DOREPLIFETIME(ASushiRestaurantCharacter, bIsProcessingAtStation);
 }
