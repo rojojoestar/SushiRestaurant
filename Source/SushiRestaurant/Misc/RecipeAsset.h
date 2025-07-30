@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-// RecipeAsset.h
 #pragma once
 
 #include "CoreMinimal.h"
@@ -8,17 +5,20 @@
 #include "Structs/RecipeData.h"
 #include "RecipeAsset.generated.h"
 
-class URecipeAsset;
-
+/**
+ * Data asset describing a recipe (name, required ingredients, and step sequence).
+ */
 UCLASS(BlueprintType)
 class URecipeAsset : public UDataAsset
 {
 	GENERATED_BODY()
 
 public:
+	// High-level recipe data (name, icon, required ingredients)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FRecipeData Recipe;
 
-	UPROPERTY(EditAnywhere)
-	TArray<FRecipeStep> Steps; // Ordered processing steps
+	// Ordered processing steps (optional extension)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TArray<FRecipeStep> Steps;
 };

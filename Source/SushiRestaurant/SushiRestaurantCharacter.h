@@ -1,100 +1,78 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Logging/LogMacros.h"
-#include "ActorComponent/InteractionComponent.h"
 #include "SushiRestaurantCharacter.generated.h"
 
 class UInputAction;
 struct FInputActionValue;
-
-DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
+class UInteractionComponent;
 
 /**
- *  A simple player-controllable third person character
- *  Implements a controllable orbiting camera
+ * Third-person character with interaction and carry/drop logic.
  */
 UCLASS(abstract)
 class ASushiRestaurantCharacter : public ACharacter
 {
 	GENERATED_BODY()
-	
-protected:
-	
-
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
-	UInputAction* MoveAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
-	UInputAction* InteractAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
-	UInputAction* RunAction;
-
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category="Carry")
-	AActor* CarriedActor;
-
-	UFUNCTION(Blueprintable, Category="Interaction")
-	void DropCarriedActor();
 
 public:
-
-	/** Constructor */
+	// -- Public API --
 	ASushiRestaurantCharacter();
-	
-	// Return currently carried actor
-	AActor* GetCarriedActor() const;
-	
-	// Attach an actor to the character
+
+	/** Returns the actor currently carried (if any). */
+	AActor* GetCarriedActor() const { return CarriedActor; }
+
+	/** Attaches an actor to the hand socket. */
 	void AttachActor(AActor* ActorToAttach);
 
-	// Detach the currently held actor
+	/** Physically detaches the actor and restores physics. */
 	void DetachCarriedActor();
 
-	UFUNCTION(Blueprintable)
+	/** Sets the carried actor (exposed for BP if needed). */
+	UFUNCTION(BlueprintCallable)
 	void SetCarriedActor(AActor* NewActor);
 
-protected:
-
-	/** Initialize input action bindings */
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-protected:
-
-	/** Called for movement input */
-	void Move(const FInputActionValue& Value);
-
-	/** Called for interact input */
-	void Interact(const FInputActionValue& Value);
-	/** Called for Run input */
-	void Run(const FInputActionValue& Value);
-
-	
-	
-
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-
-	/** */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction", meta = (AllowPrivateAccess = "true"))
-	UInteractionComponent* InteractionComponent;
-
-
-
-public:
-
-	/** Handles move inputs from either controls or UI interfaces */
+	/** Input-to-logic entry points (called by input bindings). */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoMove(float Right, float Forward);
 
+	// Kept as Server RPC because your code already used it this way
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Input")
 	virtual void DoInteract();
 
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoRun();
-};
 
+protected:
+	// -- Components --
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Interaction", meta=(AllowPrivateAccess="true"))
+	UInteractionComponent* InteractionComponent;
+
+	// -- Input --
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* MoveAction = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* InteractAction = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* RunAction = nullptr;
+
+	// -- Carry state --
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category="Carry")
+	AActor* CarriedActor = nullptr;
+
+	/** Drops the carried actor properly (calls StopInteract on it). */
+	UFUNCTION(BlueprintCallable, Category="Interaction")
+	void DropCarriedActor();
+
+	// -- Internals --
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	// Input handlers
+	void Move(const FInputActionValue& Value);
+	void Interact(const FInputActionValue& Value);
+	void Run(const FInputActionValue& Value);
+};

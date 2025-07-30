@@ -3,45 +3,38 @@
 #include "SushiRestaurantCharacter.h"
 #include "Kismet/KismetSystemLibrary.h"
 
-// Sets default values
+// ---------- Constructor ----------
 APickupActor::APickupActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// Setup mesh component
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
+	SetRootComponent(MeshComponent);
 
-	// Enable physics for interaction
 	MeshComponent->SetSimulatePhysics(true);
-
-	// Default ingredient values
-	IngredientType = EIngredientType::None;
-	IngredientState = EIngredientState::Raw;
 }
 
-// Interaction with character
+// ---------- IInteractable ----------
 void APickupActor::Interact_Implementation(APawn* Interactor)
 {
 	if (!Interactor) return;
 
 	ASushiRestaurantCharacter* Character = Cast<ASushiRestaurantCharacter>(Interactor);
-	if (!Character) return;
+	if (!Character || Character->GetCarriedActor()) return;
 
-	// If already carrying something, do nothing
-	if (Character->GetCarriedActor()) return;
-
-	// Disable physics before attachment
+	// Disable physics/collision and attach to character hand
 	MeshComponent->SetSimulatePhysics(false);
 	MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	// Attach to character
 	Character->AttachActor(this);
 
-	// Debug print for clarity
-	FString TypeStr = UEnum::GetValueAsString(IngredientType);
-	FString StateStr = UEnum::GetValueAsString(IngredientState);
-	UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Picked up: %s (%s)"), *TypeStr, *StateStr), true, true, FLinearColor::Green, 1.5f);
+	// Debug
+	const FString TypeStr  = UEnum::GetValueAsString(IngredientType);
+	const FString StateStr = UEnum::GetValueAsString(IngredientState);
+	UKismetSystemLibrary::PrintString(
+		this,
+		FString::Printf(TEXT("Picked up: %s (%s)"), *TypeStr, *StateStr),
+		true, true, FLinearColor::Green, 1.5f
+	);
 }
 
 void APickupActor::StopInteract_Implementation(APawn* Interactor)
@@ -51,19 +44,18 @@ void APickupActor::StopInteract_Implementation(APawn* Interactor)
 	ASushiRestaurantCharacter* Character = Cast<ASushiRestaurantCharacter>(Interactor);
 	if (!Character) return;
 
-	// Detach from character
+	// Detach and drop slightly in front of the player
 	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	Character->SetCarriedActor(nullptr);
 
-	// Restore physics and collision
-	MeshComponent->SetSimulatePhysics(true);
-	MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
-	// Optional: reposition slightly to avoid intersection with player
-	FVector DropLocation = Character->GetActorLocation() + Character->GetActorForwardVector() * 100.f;
+	const FVector DropLocation = Character->GetActorLocation() + Character->GetActorForwardVector() * 100.f;
 	SetActorLocation(DropLocation);
 
-	// Debug
-	UKismetSystemLibrary::PrintString(this, TEXT("Dropped Ingredient"), true, true, FLinearColor::Red, 1.0f);
-}
+	// Re-enable physics and overlaps so DropZone can pick it up
+	MeshComponent->SetSimulatePhysics(true);
+	MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	MeshComponent->SetGenerateOverlapEvents(true);
+	MeshComponent->WakeAllRigidBodies();
 
+	UKismetSystemLibrary::PrintString(this, TEXT("Dropped item"), true, true, FLinearColor::Red, 1.0f);
+}

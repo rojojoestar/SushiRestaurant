@@ -5,64 +5,63 @@
 #include "Interface/InteractableInterface.h"
 #include "PickupActor.generated.h"
 
+class UStaticMeshComponent;
 class URecipeAsset;
 
-// Enumeration for ingredient states
+/** Ingredient processing state for a pickup. */
 UENUM(BlueprintType)
 enum class EIngredientState : uint8
 {
-	Raw     UMETA(DisplayName = "Raw"),
-	Sliced  UMETA(DisplayName = "Sliced"),
-	Cooked  UMETA(DisplayName = "Cooked"),
-	Ready   UMETA(DisplayName = "Ready")
+	Raw     UMETA(DisplayName="Raw"),
+	Sliced  UMETA(DisplayName="Sliced"),
+	Cooked  UMETA(DisplayName="Cooked"),
+	Ready   UMETA(DisplayName="Ready")
 };
 
-// Enumeration for ingredient types
+/** Ingredient type for a pickup. */
 UENUM(BlueprintType)
 enum class EIngredientType : uint8
 {
-	None    UMETA(DisplayName = "None"),
-	Fish    UMETA(DisplayName = "Fish"),
-	Rice    UMETA(DisplayName = "Rice"),
-	Seaweed UMETA(DisplayName = "Seaweed")
+	None    UMETA(DisplayName="None"),
+	Fish    UMETA(DisplayName="Fish"),
+	Rice    UMETA(DisplayName="Rice"),
+	Seaweed UMETA(DisplayName="Seaweed")
 };
 
+/**
+ * Generic pickup the player can carry and process at stations.
+ */
 UCLASS()
 class APickupActor : public AActor, public IInteractable
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values
+	// -- Public API --
 	APickupActor();
 
+	// IInteractable
+	virtual void Interact_Implementation(APawn* Interactor) override;
+	virtual void StopInteract_Implementation(APawn* Interactor) override;
+
+	// Getters/Setters
+	EIngredientType  GetIngredientType()  const { return IngredientType; }
+	EIngredientState GetIngredientState() const { return IngredientState; }
+	void SetIngredientState(EIngredientState NewState) { IngredientState = NewState; }
+
 protected:
-	// Static mesh to represent the pickup
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	// -- Components --
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UStaticMeshComponent* MeshComponent;
 
-	// Ingredient type
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ingredient")
+	// -- Data --
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Ingredient")
 	EIngredientType IngredientType = EIngredientType::None;
 
-	// Ingredient processing state
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ingredient")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Ingredient")
 	EIngredientState IngredientState = EIngredientState::Raw;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Plate")
+	/** Optional: the final dish this pickup represents (used when placed on a plate). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Plate")
 	TSubclassOf<URecipeAsset> FinalDish;
-
-public:
-	// Interaction logic
-	void Interact_Implementation(APawn* Interactor) override;
-
-	void StopInteract_Implementation(APawn* Interactor) override;
-	
-
-	// Getters
-	EIngredientType GetIngredientType() const { return IngredientType; }
-	EIngredientState GetIngredientState() const { return IngredientState; }
-	
-	// Setter for processing state
-	void SetIngredientState(EIngredientState NewState) { IngredientState = NewState; }
 };

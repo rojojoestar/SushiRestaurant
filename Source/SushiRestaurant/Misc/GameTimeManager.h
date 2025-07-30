@@ -6,21 +6,19 @@
 #include "GameFramework/Actor.h"
 #include "GameTimeManager.generated.h"
 
+/**
+ * Placeholder actor for future central time management (if needed).
+ */
 UCLASS()
 class SUSHIRESTAURANT_API AGameTimeManager : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
-	// Sets default values for this actor's properties
+
+public:
 	AGameTimeManager();
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-public:	
-	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
 };
+

@@ -1,14 +1,15 @@
 #include "SushiRestaurantGameMode.h"
-
-#include "SushiRestaurantPlayerController.h"
 #include "TimerManager.h"
+#include "SushiRestaurantPlayerController.h"
 
+// ---------- Constructor ----------
 ASushiRestaurantGameMode::ASushiRestaurantGameMode()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	TimeRemaining = MatchDuration;
 }
 
+// ---------- Lifecycle ----------
 void ASushiRestaurantGameMode::BeginPlay()
 {
 	Super::BeginPlay();
@@ -17,44 +18,36 @@ void ASushiRestaurantGameMode::BeginPlay()
 
 	GetWorldTimerManager().SetTimer(TimerHandle_Countdown, this, &ASushiRestaurantGameMode::HandleCountdown, 1.0f, true);
 
-	// Link controller to event
-	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	// Bind all existing controllers to end-match event
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		if (APlayerController* PC = Iterator->Get())
+		if (ASushiRestaurantPlayerController* SRPC = Cast<ASushiRestaurantPlayerController>(It->Get()))
 		{
-			if (ASushiRestaurantPlayerController* SRPC = Cast<ASushiRestaurantPlayerController>(PC))
-			{
-				OnMatchEnded.AddDynamic(SRPC, &ASushiRestaurantPlayerController::HandleMatchEnded);
-			}
+			OnMatchEnded.AddDynamic(SRPC, &ASushiRestaurantPlayerController::HandleMatchEnded);
 		}
 	}
 }
 
 void ASushiRestaurantGameMode::HandleCountdown()
 {
-	TimeRemaining -= 1.0f;
+	TimeRemaining -= 1.f;
 
-	if (TimeRemaining <= 0.0f)
+	if (TimeRemaining <= 0.f)
 	{
-		TimeRemaining = 0.0f;
+		TimeRemaining = 0.f;
 		GetWorldTimerManager().ClearTimer(TimerHandle_Countdown);
-
-		// Broadcast end match event
 		OnMatchEnded.Broadcast();
-
-		// Optionally, do something extra here like pause game, freeze input, etc.
 	}
 }
 
 void ASushiRestaurantGameMode::EndMatchEarly()
 {
-	TimeRemaining = 0.0f;
+	TimeRemaining = 0.f;
 	GetWorldTimerManager().ClearTimer(TimerHandle_Countdown);
 	OnMatchEnded.Broadcast();
 }
 
 void ASushiRestaurantGameMode::HandleMatchEnded()
 {
-	// TODO: Implement any cleanup or transition logic here
-	UE_LOG(LogTemp, Warning, TEXT("Match has ended."));
+	UE_LOG(LogTemp, Warning, TEXT("Match ended."));
 }

@@ -4,9 +4,11 @@
 #include "GameFramework/GameModeBase.h"
 #include "SushiRestaurantGameMode.generated.h"
 
-// Delegate to notify when the match ends
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchEnded);
 
+/**
+ * Simple match timer that broadcasts when the time is over.
+ */
 UCLASS()
 class ASushiRestaurantGameMode : public AGameModeBase
 {
@@ -15,35 +17,32 @@ class ASushiRestaurantGameMode : public AGameModeBase
 public:
 	ASushiRestaurantGameMode();
 
+	/** Remaining time in seconds. */
+	UFUNCTION(BlueprintPure, Category="Game Timer")
+	float GetRemainingTime() const { return TimeRemaining; }
+
+	/** Ends the match early (broadcasts event). */
+	UFUNCTION(BlueprintCallable, Category="Game Timer")
+	void EndMatchEarly();
+
+	/** Event when the match ends. */
+	UPROPERTY(BlueprintAssignable, Category="Game Timer")
+	FOnMatchEnded OnMatchEnded;
+
 protected:
 	virtual void BeginPlay() override;
 
-	// Total match time (in seconds)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game Timer")
-	float MatchDuration = 180.0f;
+private:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Game Timer", meta=(AllowPrivateAccess="true"))
+	float MatchDuration = 180.f;
 
-	// Remaining time
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Timer")
-	float TimeRemaining;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Game Timer", meta=(AllowPrivateAccess="true"))
+	float TimeRemaining = 0.f;
 
-	// Countdown tick
 	FTimerHandle TimerHandle_Countdown;
 
-	// Updates the remaining time
 	void HandleCountdown();
 
-public:
-	// Event called when time runs out
-	UPROPERTY(BlueprintAssignable, Category = "Game Timer")
-	FOnMatchEnded OnMatchEnded;
-
-	UFUNCTION(BlueprintPure, Category = "Game Timer")
-	float GetRemainingTime() const { return TimeRemaining; }
-
-	UFUNCTION(BlueprintCallable, Category = "Game Timer")
-	void EndMatchEarly();
-
 	UFUNCTION()
-	void HandleMatchEnded(); // ✔ Accesible desde GameMode
-
+	void HandleMatchEnded();
 };

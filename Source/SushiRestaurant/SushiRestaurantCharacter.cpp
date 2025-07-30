@@ -1,124 +1,80 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "SushiRestaurantCharacter.h"
-#include "Engine/LocalPlayer.h"
+#include "ActorComponent/InteractionComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/Controller.h"
+#include "Components/StaticMeshComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "InputActionValue.h"
-#include "Net/UnrealNetwork.h"
-#include "ActorComponent/InteractionComponent.h"
 #include "Interface/InteractableInterface.h"
+#include "Net/UnrealNetwork.h"
 
-DEFINE_LOG_CATEGORY(LogTemplateCharacter);
-
-//DropCarriedActor calls StopInteract (That allows you to deactive collisions, reactivate physics, etc.) and set CarriedActor = nullptr
-void ASushiRestaurantCharacter::DropCarriedActor()
-{
-	if (CarriedActor)
-	{
-		// Call StopInteract if the actor implement the interface IInteractable
-		IInteractable::Execute_StopInteract(CarriedActor, this);
-
-		// Then actualize the local state
-		CarriedActor = nullptr;
-	}
-}
-
+// ---------- Constructor ----------
 ASushiRestaurantCharacter::ASushiRestaurantCharacter()
 {
-	//
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
-	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-		
-	// Don't rotate when the controller rotates. Let that just affect the camera.
+
+	// Capsule & movement setup
+	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.f);
 	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
+	bUseControllerRotationYaw   = false;
+	bUseControllerRotationRoll  = false;
 
-	// Configure character movement
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f);
-
-	// Note: For faster iteration times these variables, and many more, can be tweaked in the Character Blueprint
-	// instead of recompiling to adjust them
-	GetCharacterMovement()->JumpZVelocity = 500.f;
-	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
-	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
-	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
-	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
-	
-
-	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
-	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+	auto* Move = GetCharacterMovement();
+	Move->bOrientRotationToMovement = true;
+	Move->RotationRate = FRotator(0.f, 500.f, 0.f);
+	Move->JumpZVelocity = 500.f;
+	Move->AirControl = 0.35f;
+	Move->MaxWalkSpeed = 500.f;
+	Move->MinAnalogWalkSpeed = 20.f;
+	Move->BrakingDecelerationWalking = 2000.f;
+	Move->BrakingDecelerationFalling = 1500.f;
 }
 
+// ---------- Input setup ----------
 void ASushiRestaurantCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) 
+	if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		// Movement
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Move);
-
-		// Interact
-		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ASushiRestaurantCharacter::Interact);
-
-		// Run (si quieres usarlo más adelante)
-		EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Run);
-	}
-	else
-	{
-		UE_LOG(LogTemplateCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+		EIC->BindAction(MoveAction,     ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Move);
+		EIC->BindAction(InteractAction, ETriggerEvent::Started,   this, &ASushiRestaurantCharacter::Interact);
+		EIC->BindAction(RunAction,      ETriggerEvent::Triggered, this, &ASushiRestaurantCharacter::Run);
 	}
 }
 
+// ---------- Input handlers ----------
 void ASushiRestaurantCharacter::Move(const FInputActionValue& Value)
 {
-	// input is a Vector2D
-	FVector2D MovementVector = Value.Get<FVector2D>();
-
-	// route the input
-	DoMove(MovementVector.X, MovementVector.Y);
+	const FVector2D Axis = Value.Get<FVector2D>();
+	DoMove(Axis.X, Axis.Y);
 }
 
 void ASushiRestaurantCharacter::Interact(const FInputActionValue& Value)
 {
-	const bool bIsPressed = Value.Get<bool>();
-
-	if(bIsPressed)
+	if (Value.Get<bool>())
 	{
 		DoInteract();
-		
 	}
 }
 
-void ASushiRestaurantCharacter::Run(const FInputActionValue& Value)
+void ASushiRestaurantCharacter::Run(const FInputActionValue& /*Value*/)
 {
+	// Reserved for sprint logic if needed
 }
 
-
+// ---------- Input-to-logic ----------
 void ASushiRestaurantCharacter::DoMove(float Right, float Forward)
 {
-	if (GetController() != nullptr)
+	if (Controller)
 	{
-		// find out which way is forward
-		const FRotator Rotation = GetController()->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
 
-		// get forward vector
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		const FVector ForwardVector = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		const FVector RightVector   = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-		// get right vector 
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		// add movement 
-		AddMovementInput(ForwardDirection, Forward);
-		AddMovementInput(RightDirection, Right);
+		AddMovementInput(ForwardVector, Forward);
+		AddMovementInput(RightVector, Right);
 	}
 }
 
@@ -127,7 +83,6 @@ void ASushiRestaurantCharacter::DoInteract_Implementation()
 	UE_LOG(LogTemp, Warning, TEXT("DoInteract() called"));
 	if (CarriedActor)
 	{
-		// Drop the carried actor if already holding one
 		DropCarriedActor();
 		return;
 	}
@@ -142,49 +97,45 @@ void ASushiRestaurantCharacter::DoRun()
 {
 }
 
+// ---------- Carry helpers ----------
 void ASushiRestaurantCharacter::AttachActor(AActor* ActorToAttach)
 {
-	if (!ActorToAttach)
-		return;
-
-	// Attach to a socket on the mesh, or just to the root
-	ActorToAttach->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("hand_rSocket")); // Replace with your socket name
+	if (!ActorToAttach) return;
+	ActorToAttach->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("hand_rSocket"));
 	CarriedActor = ActorToAttach;
 }
 
-// DetachedCarriedActor focus to drop physically the object (detach & physics) but this doesn't notify to interaction logic
 void ASushiRestaurantCharacter::DetachCarriedActor()
 {
-	if (CarriedActor)
+	if (!CarriedActor) return;
+
+	CarriedActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+	if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(CarriedActor->GetComponentByClass(UStaticMeshComponent::StaticClass())))
 	{
-		// Detach actor from character
-		CarriedActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-
-		// Reactivate physics if it has a mesh
-		if (UStaticMeshComponent* MeshComponent = Cast<UStaticMeshComponent>(CarriedActor->GetComponentByClass(UStaticMeshComponent::StaticClass())))
-		{
-			MeshComponent->SetSimulatePhysics(true);
-		}
-
-		CarriedActor = nullptr;
+		Mesh->SetSimulatePhysics(true);
 	}
+
+	CarriedActor = nullptr;
 }
 
 void ASushiRestaurantCharacter::SetCarriedActor(AActor* NewActor)
 {
-	
+	CarriedActor = NewActor;
 }
 
-
-AActor* ASushiRestaurantCharacter::GetCarriedActor() const
+void ASushiRestaurantCharacter::DropCarriedActor()
 {
-	return CarriedActor;
+	if (CarriedActor)
+	{
+		IInteractable::Execute_StopInteract(CarriedActor, this);
+		CarriedActor = nullptr;
+	}
 }
 
+// ---------- Replication ----------
 void ASushiRestaurantCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
 	DOREPLIFETIME(ASushiRestaurantCharacter, CarriedActor);
 }
-

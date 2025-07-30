@@ -1,119 +1,119 @@
 #include "CookwareStation.h"
+#include "Actors/PickupActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "SushiRestaurantCharacter.h"
 
-// Sets default values
+// ---------- Constructor ----------
 ACookwareStation::ACookwareStation()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 
-	// Asumimos que MeshComponent ya se crea antes (seguramente en tu código ya está)
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent; // o tal vez ya tienes otra raíz, como una box
+	SetRootComponent(MeshComponent);
 
-	// --- Creamos el PlacePoint ---
 	PlacePoint = CreateDefaultSubobject<USceneComponent>(TEXT("PlacePoint"));
-	PlacePoint->SetupAttachment(MeshComponent); // Se adjunta al mesh
-
-	// Opcional: ajustar posición relativa (ej: un poco más arriba para que no quede dentro del mesh)
-	PlacePoint->SetRelativeLocation(PlacePointOffset); // Ajusta altura según tu modelo
+	PlacePoint->SetupAttachment(MeshComponent);
+	PlacePoint->SetRelativeLocation(PlacePointOffset);
 
 	ProgressWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("ProgressWidget"));
-	ProgressWidget->SetupAttachment(RootComponent);
+	ProgressWidget->SetupAttachment(MeshComponent);
 	ProgressWidget->SetWidgetSpace(EWidgetSpace::Screen);
 	ProgressWidget->SetDrawAtDesiredSize(true);
 	ProgressWidget->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
 	ProgressWidget->SetVisibility(false);
-
-	CookwareType = ECookwareType::CuttingBoard;
-	ProcessingTime = 2.0f;
-	bIsProcessing = false;
-	CurrentPickup = nullptr;
 }
 
-// Interact entry point
-void ACookwareStation::Interact(APawn* Interactor)
+// ---------- IInteractable ----------
+void ACookwareStation::Interact_Implementation(APawn* Interactor)
 {
-	if (!HasAuthority()) return;
-	if (bIsProcessing) return;
+	if (!HasAuthority() || bIsProcessing) return;
 
-	ASushiRestaurantCharacter* Player = Cast<ASushiRestaurantCharacter>(Interactor);
-	if (!Player) return;
-
-	APickupActor* Pickup = Cast<APickupActor>(Player->GetCarriedActor());
-
-	if (Pickup)
+	if (ASushiRestaurantCharacter* Player = Cast<ASushiRestaurantCharacter>(Interactor))
 	{
-		if (!CanProcessPickup(Pickup)) return;
+		if (APickupActor* Pickup = Cast<APickupActor>(Player->GetCarriedActor()))
+		{
+			if (!CanProcessPickup(Pickup)) return;
 
-		Pickup->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
-		CurrentPickup = Pickup;
-		bIsProcessing = true;
-		StartProcessing();
+			// Snap to station and begin
+			Pickup->AttachToComponent(PlacePoint, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+			CurrentPickup = Pickup;
+			bIsProcessing = true;
+			StartProcessing();
+			return;
+		}
 	}
-	else
-	{
-		TryProcessExistingPickup(Interactor);
-	}
+
+	// If player is not carrying anything, process an existing pickup if any.
+	TryProcessExistingPickup(Interactor);
 }
 
-// Check if pickup is valid
+// ---------- Public station helpers ----------
+void ACookwareStation::ReceiveDroppedPickup(APickupActor* Pickup)
+{
+	if (!HasAuthority() || bIsProcessing || CurrentPickup) return;
+	if (!CanProcessPickup(Pickup)) return;
+
+	Pickup->AttachToComponent(PlacePoint, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	CurrentPickup = Pickup;
+	bIsProcessing = true;
+	StartProcessing();
+}
+
+void ACookwareStation::TryProcessExistingPickup(APawn* /*Interactor*/)
+{
+	if (!HasAuthority() || bIsProcessing || !CurrentPickup) return;
+	StartProcessing();
+}
+
+// ---------- Internals ----------
 bool ACookwareStation::CanProcessPickup(APickupActor* Pickup) const
 {
+	if (!Pickup) return false;
+
+	// Example rule for Cutting Board
 	if (CookwareType == ECookwareType::CuttingBoard)
 	{
 		return Pickup->GetIngredientType() == EIngredientType::Fish &&
 		       Pickup->GetIngredientState() == EIngredientState::Raw;
 	}
 
-	// Extend with other cookware logic
+	// TODO(next-commit): Extend for Stove / MixingTable, etc.
 	return false;
 }
 
-// Start cooking timer
 void ACookwareStation::StartProcessing()
 {
-	GetWorldTimerManager().SetTimer(ProcessingTimerHandle, this, &ACookwareStation::CompleteProcessing, ProcessingTime, false);
+	GetWorldTimerManager().SetTimer(
+		ProcessingTimerHandle,
+		this,
+		&ACookwareStation::CompleteProcessing,
+		ProcessingTime,
+		false
+	);
+
 	ProgressWidget->SetVisibility(true);
 }
 
-// Finish cooking
 void ACookwareStation::CompleteProcessing()
 {
 	ProgressWidget->SetVisibility(false);
 	if (!CurrentPickup) return;
 
+	// Example: Cutting board produces "Sliced"
 	if (CookwareType == ECookwareType::CuttingBoard)
 	{
 		CurrentPickup->SetIngredientState(EIngredientState::Sliced);
 	}
 
+	// Detach and leave it at the station (player can pick it again)
 	CurrentPickup->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	CurrentPickup = nullptr;
 	bIsProcessing = false;
 }
 
-// Handle drop zone logic
-void ACookwareStation::ReceiveDroppedPickup(APickupActor* Pickup)
-{
-	if (!HasAuthority() || bIsProcessing || CurrentPickup) return;
-
-	CurrentPickup = Pickup;
-}
-
-// Manual processing
-void ACookwareStation::TryProcessExistingPickup(APawn* Interactor)
-{
-	if (!HasAuthority()) return;
-	if (bIsProcessing || !CurrentPickup) return;
-
-	StartProcessing();
-}
-
-// Replication setup
 void ACookwareStation::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

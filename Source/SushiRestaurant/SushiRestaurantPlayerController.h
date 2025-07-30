@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,46 +5,39 @@
 #include "SushiRestaurantPlayerController.generated.h"
 
 class UInputMappingContext;
+class UUserWidget;
 
 /**
- *  Basic PlayerController class for a third person game
- *  Manages input mappings
+ * PlayerController that sets input contexts and handles the Game Over UI.
  */
 UCLASS(abstract)
 class ASushiRestaurantPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
-protected:
-
-	/** Input Mapping Contexts */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category ="Input", meta = (AllowPrivateAccess = "true"))
-	TArray<UInputMappingContext*> DefaultMappingContexts;
-
-	/** Input mapping context setup */
-	virtual void SetupInputComponent() override;
-	
-
-	// Reference to Game Over Widget class
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UUserWidget> GameOverWidgetClass;
-
-	// Active widget
-	UPROPERTY()
-	UUserWidget* GameOverWidget;
-
-	virtual void BeginPlay() override;
-
-	void OnPossess(APawn* InPawn) override;
-
-	void Tick(float DeltaSeconds) override;
 
 public:
+	// -- Public API --
 	UFUNCTION()
 	void HandleMatchEnded();
 
-	// Setup Height Camera (Editable from editor)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera Settings")
-	float CameraFixedHeight = 500.0f; 
+protected:
+	// -- UI --
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TSubclassOf<UUserWidget> GameOverWidgetClass;
 
+	UPROPERTY() UUserWidget* GameOverWidget = nullptr;
+
+	// -- Input --
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input", meta=(AllowPrivateAccess="true"))
+	TArray<UInputMappingContext*> DefaultMappingContexts;
+
+	// -- Internals --
+	virtual void SetupInputComponent() override;
+	virtual void BeginPlay() override;
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void Tick(float DeltaSeconds) override;
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera Settings")
+	float CameraFixedHeight = 500.f;
 };

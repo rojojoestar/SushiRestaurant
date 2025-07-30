@@ -8,27 +8,32 @@ class UBoxComponent;
 class ACookwareStation;
 class APickupActor;
 
+/**
+ * Trigger volume that accepts a PickupActor drop when a player is inside.
+ * It forwards the item to the linked CookwareStation.
+ */
 UCLASS()
 class ADropZone : public AActor
 {
 	GENERATED_BODY()
 
 public:
+	// -- Public API --
 	ADropZone();
+
+	/** True if at least one pawn is inside the zone. */
 	bool IsPlayerInside() const { return PawnsInside.Num() > 0; }
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Drop Zone")
+	// -- Components --
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Drop Zone")
 	UBoxComponent* ZoneTrigger;
 
-	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Drop Zone")
-	ACookwareStation* LinkedStation;
+	// -- Data --
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category="Drop Zone")
+	ACookwareStation* LinkedStation = nullptr;
 
-	// Track which pawns are currently inside the DropZone
-	UPROPERTY()
-	TSet<TWeakObjectPtr<APawn>> PawnsInside;
-
-protected:
+	// -- Internals --
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
@@ -39,4 +44,8 @@ protected:
 	UFUNCTION()
 	void OnZoneEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 						  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+private:
+	UPROPERTY()
+	TSet<TWeakObjectPtr<APawn>> PawnsInside;
 };

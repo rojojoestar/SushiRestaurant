@@ -1,6 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
-
 #include "SushiRestaurantPlayerController.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
@@ -9,15 +6,16 @@
 #include "Camera/CameraActor.h"
 #include "Kismet/GameplayStatics.h"
 
+// ---------- Input ----------
 void ASushiRestaurantPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	//Disable Input
+	// Disable input initially (per your current behavior)
 	SetIgnoreMoveInput(true);
 	SetIgnoreLookInput(true);
 
-	// Create and show the Game Over UI
+	// Create and show Game Over UI now (you may want to move this to HandleMatchEnded)
 	if (GameOverWidgetClass)
 	{
 		GameOverWidget = CreateWidget<UUserWidget>(this, GameOverWidgetClass);
@@ -27,52 +25,45 @@ void ASushiRestaurantPlayerController::SetupInputComponent()
 		}
 	}
 
-	// Add Input Mapping Contexts
-	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	if (UEnhancedInputLocalPlayerSubsystem* Subsys = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 	{
-		for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
+		for (UInputMappingContext* Ctx : DefaultMappingContexts)
 		{
-			Subsystem->AddMappingContext(CurrentContext, 0);
+			Subsys->AddMappingContext(Ctx, 0);
 		}
 	}
 }
 
+// ---------- Lifecycle ----------
 void ASushiRestaurantPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	
-	
 }
 
 void ASushiRestaurantPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
+	// Delay camera selection for one second to ensure level actors exist
 	FTimerHandle TimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]() {
-		ACameraActor* LevelCamera = Cast<ACameraActor>(UGameplayStatics::GetActorOfClass(GetWorld(), ACameraActor::StaticClass()));
-
-	if (LevelCamera != nullptr)
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
 	{
-		SetViewTarget(LevelCamera);
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *LevelCamera->GetActorLocation().ToString());
-	}
+		if (ACameraActor* LevelCamera = Cast<ACameraActor>(UGameplayStatics::GetActorOfClass(GetWorld(), ACameraActor::StaticClass())))
+		{
+			SetViewTarget(LevelCamera);
+			UE_LOG(LogTemp, Warning, TEXT("Camera set to: %s"), *LevelCamera->GetActorLocation().ToString());
+		}
 	}, 1.0f, false);
-	
 }
 
 void ASushiRestaurantPlayerController::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
-	
 }
 
+// ---------- Events ----------
 void ASushiRestaurantPlayerController::HandleMatchEnded()
 {
-	// For now, just log something
 	UE_LOG(LogTemp, Warning, TEXT("Game has ended. Controller received the signal."));
-
-	// TODO: Add Game Over screen display or camera transition here
+	// TODO(next-commit): Show Game Over screen or transition camera here
 }

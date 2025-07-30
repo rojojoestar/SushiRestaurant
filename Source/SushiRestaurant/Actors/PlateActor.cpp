@@ -1,22 +1,19 @@
 #include "PlateActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "SushiRestaurantCharacter.h"
+#include "Actors/IngredientActor.h"   // TODO(next-commit): remove after unifying
 #include "Misc/RecipeAsset.h"
 
-// Constructor
+// ---------- Constructor ----------
 APlateActor::APlateActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// Create and set up mesh component
 	PlateMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlateMesh"));
-	RootComponent = PlateMesh;
-
-	// Default max capacity
-	MaxIngredients = 3;
+	SetRootComponent(PlateMesh);
 }
 
-// Called when player interacts with the plate
+// ---------- IInteractable ----------
 void APlateActor::Interact_Implementation(APawn* Interactor)
 {
 	if (!Interactor) return;
@@ -24,45 +21,40 @@ void APlateActor::Interact_Implementation(APawn* Interactor)
 	ASushiRestaurantCharacter* Player = Cast<ASushiRestaurantCharacter>(Interactor);
 	if (!Player) return;
 
-	// Try to add the ingredient if the player is carrying one
+	// If the player is holding a processed ingredient, try to add it
 	if (AIngredientActor* Ingredient = Cast<AIngredientActor>(Player->GetCarriedActor()))
 	{
 		if (TryAddIngredient(Ingredient))
 		{
-			Player->DetachCarriedActor(); // Drop the ingredient
+			Player->DetachCarriedActor(); // The ingredient stays attached to the plate
 		}
+		return;
 	}
-	else if (!Player->GetCarriedActor())
+
+	// Empty-handed: pick up the plate
+	if (!Player->GetCarriedActor())
 	{
-		// If empty-handed, pick up the plate
 		Player->AttachActor(this);
 	}
 }
 
-// Attempts to add a processed ingredient to the plate
+// ---------- Internals ----------
 bool APlateActor::TryAddIngredient(AIngredientActor* Ingredient)
 {
-	if (!Ingredient || Ingredients.Num() >= MaxIngredients)
-		return false;
+	if (!Ingredient || Ingredients.Num() >= MaxIngredients) return false;
 
-	// Only allow processed (not raw) ingredients
-	if (Ingredient->GetIngredientStates() == EIngredientStates::Raw)
-		return false;
+	// Only non-raw ingredients allowed
+	if (Ingredient->GetIngredientStates() == EIngredientStates::Raw) return false;
 
-	// Attach to plate mesh
-	Ingredient->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
+	Ingredient->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
 	Ingredients.Add(Ingredient);
 
-	// Rearrange for visual clarity
 	UpdateIngredientPlacement();
-
-	// Track ingredient type
-	CurrentIngredients.Add(TArray<EIngredientType>::ElementType(Ingredient->GetIngredientTypes()));
+	CurrentIngredients.Add(static_cast<EIngredientType>(Ingredient->GetIngredientTypes()));
 
 	return true;
 }
 
-// Returns the list of ingredient types currently on the plate
 TArray<EIngredientType> APlateActor::GetIngredientsTypes() const
 {
 	return CurrentIngredients;
@@ -70,29 +62,24 @@ TArray<EIngredientType> APlateActor::GetIngredientsTypes() const
 
 URecipeAsset* APlateActor::GetFinalIngredient() const
 {
-	if (FinalDish)
-	{
-		return FinalDish.GetDefaultObject();
-	}
-	return nullptr;
+	return FinalDish ? FinalDish.GetDefaultObject() : nullptr;
 }
 
-// Repositions ingredients in a circle above the plate
 void APlateActor::UpdateIngredientPlacement()
 {
 	const float Radius = 15.f;
-	const FVector Center = FVector(0, 0, 10.f);
+	const FVector Center(0.f, 0.f, 10.f);
 
 	for (int32 i = 0; i < Ingredients.Num(); ++i)
 	{
-		float Angle = (360.f / Ingredients.Num()) * i;
-		float Rad = FMath::DegreesToRadians(Angle);
-		FVector Offset = FVector(FMath::Cos(Rad) * Radius, FMath::Sin(Rad) * Radius, 10.f);
+		const float Angle = (360.f / Ingredients.Num()) * i;
+		const float Rad = FMath::DegreesToRadians(Angle);
+		const FVector Offset(FMath::Cos(Rad) * Radius, FMath::Sin(Rad) * Radius, 10.f);
 
-		if (Ingredients[i])
+		if (AActor* const Item = Ingredients[i])
 		{
-			Ingredients[i]->SetActorRelativeLocation(Center + Offset);
-			Ingredients[i]->SetActorRelativeRotation(FRotator::ZeroRotator);
+			Item->SetActorRelativeLocation(Center + Offset);
+			Item->SetActorRelativeRotation(FRotator::ZeroRotator);
 		}
 	}
 }
