@@ -6,6 +6,8 @@
 #include "Engine/LocalPlayer.h"
 #include "Blueprint/UserWidget.h"
 #include "InputMappingContext.h"
+#include "Camera/CameraActor.h"
+#include "Kismet/GameplayStatics.h"
 
 void ASushiRestaurantPlayerController::SetupInputComponent()
 {
@@ -33,6 +35,38 @@ void ASushiRestaurantPlayerController::SetupInputComponent()
 			Subsystem->AddMappingContext(CurrentContext, 0);
 		}
 	}
+}
+
+void ASushiRestaurantPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	
+	
+}
+
+void ASushiRestaurantPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]() {
+		ACameraActor* LevelCamera = Cast<ACameraActor>(UGameplayStatics::GetActorOfClass(GetWorld(), ACameraActor::StaticClass()));
+
+	if (LevelCamera != nullptr)
+	{
+		SetViewTarget(LevelCamera);
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *LevelCamera->GetActorLocation().ToString());
+	}
+	}, 1.0f, false);
+	
+}
+
+void ASushiRestaurantPlayerController::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	
 }
 
 void ASushiRestaurantPlayerController::HandleMatchEnded()

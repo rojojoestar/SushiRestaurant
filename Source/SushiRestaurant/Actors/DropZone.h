@@ -15,15 +15,18 @@ class ADropZone : public AActor
 
 public:
 	ADropZone();
+	bool IsPlayerInside() const { return PawnsInside.Num() > 0; }
 
 protected:
-	// Collision zone where pickups can be dropped
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Drop Zone")
 	UBoxComponent* ZoneTrigger;
 
-	// Linked cookware station
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Drop Zone")
 	ACookwareStation* LinkedStation;
+
+	// Track which pawns are currently inside the DropZone
+	UPROPERTY()
+	TSet<TWeakObjectPtr<APawn>> PawnsInside;
 
 protected:
 	virtual void BeginPlay() override;
@@ -32,4 +35,8 @@ protected:
 	void OnZoneBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 							UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 							bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnZoneEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+						  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 };

@@ -27,21 +27,18 @@ void ADeliveryZone::BeginPlay()
 void ADeliveryZone::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	APlateActor* Plate = Cast<APlateActor>(OtherActor);
-	if (Plate && Plate->GetIngredients().Num() > 0)
+	if (!Plate || !OrderManager) return; // Ahora usa OrderManager como propiedad
+
+	URecipeAsset* DeliveredDish = Plate->GetFinalIngredient();
+	if (!DeliveredDish) return;
+
+	if (OrderManager->TryCompleteOrder(TableID, DeliveredDish))
 	{
-		// Look for OrderManager in the scene
-		TArray<AActor*> Managers;
-		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AOrderManager::StaticClass(), Managers);
-
-		if (Managers.Num() > 0)
-		{
-			AOrderManager* OrderManager = Cast<AOrderManager>(Managers[0]);
-
-			if (OrderManager->TryCompleteOrder(TableID, Plate->GetIngredientsTypes()))
-			{
-				// Success - destroy the plate
-				Plate->Destroy();
-			}
-		}
+		UE_LOG(LogTemp, Log, TEXT("Order delivered correctly for Table %d!"), TableID);
+		Plate->Destroy();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Wrong dish delivered to Table %d"), TableID);
 	}
 }

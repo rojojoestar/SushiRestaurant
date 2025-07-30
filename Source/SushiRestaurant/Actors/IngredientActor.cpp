@@ -29,7 +29,7 @@ void AIngredientActor::Tick(float DeltaTime)
 }
 
 // Implementation of interaction logic
-void AIngredientActor::Interact(APawn* Interactor)
+void AIngredientActor::Interact_Implementation(APawn* Interactor)
 {
 	// Print interaction debug log
 	FString TypeString = UEnum::GetValueAsString(IngredientTypes);

@@ -1,6 +1,7 @@
 #include "PlateActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "SushiRestaurantCharacter.h"
+#include "Misc/RecipeAsset.h"
 
 // Constructor
 APlateActor::APlateActor()
@@ -16,7 +17,7 @@ APlateActor::APlateActor()
 }
 
 // Called when player interacts with the plate
-void APlateActor::Interact(APawn* Interactor)
+void APlateActor::Interact_Implementation(APawn* Interactor)
 {
 	if (!Interactor) return;
 
@@ -65,6 +66,15 @@ bool APlateActor::TryAddIngredient(AIngredientActor* Ingredient)
 TArray<EIngredientType> APlateActor::GetIngredientsTypes() const
 {
 	return CurrentIngredients;
+}
+
+URecipeAsset* APlateActor::GetFinalIngredient() const
+{
+	if (FinalDish)
+	{
+		return FinalDish.GetDefaultObject();
+	}
+	return nullptr;
 }
 
 // Repositions ingredients in a circle above the plate

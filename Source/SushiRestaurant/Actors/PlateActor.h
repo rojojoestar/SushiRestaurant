@@ -31,7 +31,7 @@ protected:
 
 public:
 	// IInteractable implementation: called when the player interacts
-	virtual void Interact(APawn* Interactor) override;
+	virtual void Interact_Implementation(APawn* Interactor) override;
 
 	// Try to add an ingredient to the plate
 	bool TryAddIngredient(AIngredientActor* Ingredient);
@@ -45,6 +45,12 @@ public:
 	// Stores ingredient types separately for quick validation
 	UPROPERTY(VisibleAnywhere)
 	TArray<EIngredientType> CurrentIngredients;
+
+	UFUNCTION(BlueprintCallable)
+	URecipeAsset* GetFinalIngredient() const;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Plate")
+	TSubclassOf<URecipeAsset> FinalDish;
 
 protected:
 	// Arranges ingredients visually around the plate

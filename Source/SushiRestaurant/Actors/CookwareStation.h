@@ -3,16 +3,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Interface/InteractableInterface.h"
+#include "Structs/RecipeData.h"
 #include "PickupActor.h"
 #include "CookwareStation.generated.h"
 
-UENUM(BlueprintType)
-enum class ECookwareType : uint8
-{
-	CuttingBoard UMETA(DisplayName = "Cutting Board"),
-	Pot          UMETA(DisplayName = "Pot"),
-	Assembler    UMETA(DisplayName = "Assembler")
-};
+
 
 class UWidgetComponent;
 
@@ -53,10 +48,17 @@ protected:
 	UWidgetComponent* ProgressWidget;
 
 public:
-	virtual void Interact(APawn* Interactor) override;
+	virtual void Interact(APawn* Interactor);
 
 	void ReceiveDroppedPickup(APickupActor* Pickup);
 	void TryProcessExistingPickup(APawn* Interactor);
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking")
+	USceneComponent* PlacePoint;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking")
+	FVector PlacePointOffset = FVector(0.f, 0.f, 20.f);
+
 
 protected:
 	void StartProcessing();

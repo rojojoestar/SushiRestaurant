@@ -1,102 +1,97 @@
+// OrderManager.cpp
 #include "OrderManager.h"
-#include "PickupActor.h"
 #include "Misc/RecipeAsset.h"
 #include "Net/UnrealNetwork.h"
 
 AOrderManager::AOrderManager()
 {
-	PrimaryActorTick.bCanEverTick = true;
-	bReplicates = true;
+    PrimaryActorTick.bCanEverTick = true;
+    bReplicates = true;
 }
 
 void AOrderManager::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	if (HasAuthority())
-	{
-		// Start timer to spawn orders periodically
-		GetWorldTimerManager().SetTimer(OrderGenerationTimer, this, &AOrderManager::GenerateNewOrder, OrderGenerationInterval, true);
-		GenerateNewOrder(); // Optional: start with one order
-	}
+    if (HasAuthority())
+    {
+        // Start generating orders
+        GetWorldTimerManager().SetTimer(OrderGenerationTimer, this, &AOrderManager::GenerateNewOrder, OrderGenerationInterval, true);
+        GenerateNewOrder(); // Start with one order
+    }
 }
 
 void AOrderManager::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
 
-	if (HasAuthority())
-	{
-		UpdateOrderTimers(DeltaTime);
-		CheckExpiredOrders();
-	}
+    if (HasAuthority())
+    {
+        UpdateOrderTimers(DeltaTime);
+        CheckExpiredOrders();
+    }
 }
 
-// Spawns a new random order
 void AOrderManager::GenerateNewOrder()
 {
-	if (AvailableRecipes.Num() == 0) return;
+    if (AvailableRecipes.IsEmpty()) return;
 
-	if (AvailableRecipes.Num() > 0)
-	{
-		int32 Index = FMath::RandRange(0, AvailableRecipes.Num() - 1);
-		// Use AvailableRecipes[Index]
-	}
-	
-	int32 Index = FMath::RandRange(0, AvailableRecipes.Num() - 1);
-	const URecipeAsset* SelectedRecipe = AvailableRecipes[Index];
+    int32 Index = FMath::RandRange(0, AvailableRecipes.Num() - 1);
+    TSubclassOf<URecipeAsset> SelectedRecipe = AvailableRecipes[Index];
 
-	FOrder NewOrder;
-	NewOrder.TableID = FMath::RandRange(1, 4);
-	NewOrder.RemainingTime = OrderTimeLimit;
-	NewOrder.RequiredIngredients = SelectedRecipe->Recipe.RequiredIngredients;
+    FSushiOrder NewOrder;
+    NewOrder.TableID = FMath::RandRange(1, 4);
+    NewOrder.RemainingTime = OrderTimeLimit;
+    NewOrder.Recipe = SelectedRecipe; // Store the recipe, not ingredients
 
-	ActiveOrders.Add(NewOrder);
+    ActiveOrders.Add(NewOrder);
+    UE_LOG(LogTemp, Log, TEXT("Generated order for Table %d: %s"), NewOrder.TableID, *SelectedRecipe->GetName());
 }
 
-// Decrease the remaining time for all orders
 void AOrderManager::UpdateOrderTimers(float DeltaTime)
 {
-	for (FOrder& Order : ActiveOrders)
-	{
-		Order.RemainingTime -= DeltaTime;
-	}
+    for (FSushiOrder& Order : ActiveOrders)
+    {
+        Order.RemainingTime -= DeltaTime;
+    }
 }
 
-// Remove any expired orders
 void AOrderManager::CheckExpiredOrders()
 {
-	for (int32 i = ActiveOrders.Num() - 1; i >= 0; i--)
-	{
-		if (ActiveOrders[i].RemainingTime <= 0.0f)
-		{
-			// TODO: Handle failure feedback
-			ActiveOrders.RemoveAt(i);
-		}
-	}
+    for (int32 i = ActiveOrders.Num() - 1; i >= 0; i--)
+    {
+        if (ActiveOrders[i].RemainingTime <= 0.0f)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Order for Table %d expired!"), ActiveOrders[i].TableID);
+            ActiveOrders.RemoveAt(i);
+            OnOrderExpired.Broadcast(); // Trigger Game Over or UI update
+        }
+    }
 }
 
-// Try to match a plate to an existing order
-bool AOrderManager::TryCompleteOrder(int32 TableID, const TArray<EIngredientType>& Ingredients)
+bool AOrderManager::TryCompleteOrder(int32 TableID, URecipeAsset* DeliveredDish)
 {
-	for (int32 i = 0; i < ActiveOrders.Num(); i++)
-	{
-		if (ActiveOrders[i].TableID == TableID)
-		{
-			if (ActiveOrders[i].RequiredIngredients == Ingredients)
-			{
-				ActiveOrders.RemoveAt(i);
-				return true;
-			}
-			return false;
-		}
-	}
-	return false;
+    if (!DeliveredDish) return false;
+
+    for (int32 i = 0; i < ActiveOrders.Num(); i++)
+    {
+        if (ActiveOrders[i].TableID == TableID)
+        {
+            URecipeAsset* ExpectedDish = ActiveOrders[i].Recipe.GetDefaultObject();
+            if (ExpectedDish && DeliveredDish == ExpectedDish)
+            {
+                ActiveOrders.RemoveAt(i);
+                OnOrderCompleted.Broadcast(); // Score + UI update
+                return true;
+            }
+            return false; // Wrong dish
+        }
+    }
+    return false; // No order for this table
 }
 
-// Set up variable replication
 void AOrderManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AOrderManager, ActiveOrders);
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(AOrderManager, ActiveOrders);
 }

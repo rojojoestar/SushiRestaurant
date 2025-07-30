@@ -1,73 +1,68 @@
+// OrderManager.h
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Misc/RecipeAsset.h"
 #include "OrderManager.generated.h"
 
-class URecipeAsset;
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOrderEvent);
 
-// Defines an order made by a table
 USTRUCT(BlueprintType)
-struct FOrder
+struct FSushiOrder
 {
 	GENERATED_BODY()
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	int32 TableID;
+	UPROPERTY(BlueprintReadWrite, Category = "Order")
+	int32 TableID = -1;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TArray<EIngredientType> RequiredIngredients;
+	UPROPERTY(BlueprintReadWrite, Category = "Order")
+	float RemainingTime = 60.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	float RemainingTime;
+	UPROPERTY(BlueprintReadWrite, Category = "Order")
+	TSubclassOf<URecipeAsset> Recipe;
 };
 
 UCLASS()
-class AOrderManager : public AActor
+class SUSHIRESTAURANT_API AOrderManager : public AActor
 {
 	GENERATED_BODY()
 
 public:
 	AOrderManager();
 
-protected:
+	UPROPERTY(EditAnywhere, Category = "Order")
+	TArray<TSubclassOf<URecipeAsset>> AvailableRecipes;
+
+	UPROPERTY(EditAnywhere, Category = "Order")
+	float OrderGenerationInterval = 30.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Order")
+	float OrderTimeLimit = 60.0f;
+
+	UPROPERTY(BlueprintAssignable)
+	FOrderEvent OnOrderCompleted;
+
+	UPROPERTY(BlueprintAssignable)
+	FOrderEvent OnOrderExpired;
+
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
-	// Time between order spawns
-	UPROPERTY(EditDefaultsOnly, Category = "Orders")
-	float OrderGenerationInterval = 30.0f;
+	UFUNCTION(BlueprintCallable)
+	bool TryCompleteOrder(int32 TableID, URecipeAsset* DeliveredDish);
 
-	// Time limit to complete an order
-	UPROPERTY(EditDefaultsOnly, Category = "Orders")
-	float OrderTimeLimit = 60.0f;
-
-	// List of currently active orders
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Orders")
-	TArray<FOrder> ActiveOrders;
-
-	// Handle for periodic order generation
-	FTimerHandle OrderGenerationTimer;
-
-	// Spawns a new order
-	UFUNCTION()
+protected:
 	void GenerateNewOrder();
-
-	// Decrease remaining time for all orders
 	void UpdateOrderTimers(float DeltaTime);
-
-	// Remove expired orders
 	void CheckExpiredOrders();
 
-public:
-	// Try to match submitted ingredients to an existing order
-	UFUNCTION(BlueprintCallable)
-	bool TryCompleteOrder(int32 TableID, const TArray<EIngredientType>& Ingredients);
+private:
+	UPROPERTY(Replicated)
+	TArray<FSushiOrder> ActiveOrders;
 
-	// Returns list of active orders
-	UFUNCTION(BlueprintPure)
-	const TArray<FOrder>& GetActiveOrders() const { return ActiveOrders; }
+	FTimerHandle OrderGenerationTimer;
 
-	UPROPERTY(EditAnywhere, Category = "Orders")
-	TArray<URecipeAsset*> AvailableRecipes;
+	// Replication
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

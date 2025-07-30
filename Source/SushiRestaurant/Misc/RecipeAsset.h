@@ -8,6 +8,8 @@
 #include "Structs/RecipeData.h"
 #include "RecipeAsset.generated.h"
 
+class URecipeAsset;
+
 UCLASS(BlueprintType)
 class URecipeAsset : public UDataAsset
 {
@@ -16,4 +18,7 @@ class URecipeAsset : public UDataAsset
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FRecipeData Recipe;
+
+	UPROPERTY(EditAnywhere)
+	TArray<FRecipeStep> Steps; // Ordered processing steps
 };

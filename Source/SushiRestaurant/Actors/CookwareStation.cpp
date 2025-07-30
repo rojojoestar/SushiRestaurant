@@ -10,8 +10,16 @@ ACookwareStation::ACookwareStation()
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 
+	// Asumimos que MeshComponent ya se crea antes (seguramente en tu código ya está)
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
+	RootComponent = MeshComponent; // o tal vez ya tienes otra raíz, como una box
+
+	// --- Creamos el PlacePoint ---
+	PlacePoint = CreateDefaultSubobject<USceneComponent>(TEXT("PlacePoint"));
+	PlacePoint->SetupAttachment(MeshComponent); // Se adjunta al mesh
+
+	// Opcional: ajustar posición relativa (ej: un poco más arriba para que no quede dentro del mesh)
+	PlacePoint->SetRelativeLocation(PlacePointOffset); // Ajusta altura según tu modelo
 
 	ProgressWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("ProgressWidget"));
 	ProgressWidget->SetupAttachment(RootComponent);

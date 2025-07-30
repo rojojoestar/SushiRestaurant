@@ -8,8 +8,6 @@
 #include "ActorComponent/InteractionComponent.h"
 #include "SushiRestaurantCharacter.generated.h"
 
-class USpringArmComponent;
-class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
 
@@ -23,14 +21,6 @@ UCLASS(abstract)
 class ASushiRestaurantCharacter : public ACharacter
 {
 	GENERATED_BODY()
-
-	/** Camera boom positioning the camera behind the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* CameraBoom;
-
-	/** Follow camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* FollowCamera;
 	
 protected:
 	
@@ -48,6 +38,9 @@ protected:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category="Carry")
 	AActor* CarriedActor;
 
+	UFUNCTION(Blueprintable, Category="Interaction")
+	void DropCarriedActor();
+
 public:
 
 	/** Constructor */
@@ -62,6 +55,8 @@ public:
 	// Detach the currently held actor
 	void DetachCarriedActor();
 
+	UFUNCTION(Blueprintable)
+	void SetCarriedActor(AActor* NewActor);
 
 protected:
 
@@ -96,18 +91,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoMove(float Right, float Forward);
 
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Input")
 	virtual void DoInteract();
 
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoRun();
-
-public:
-
-	/** Returns CameraBoom subobject **/
-	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-
-	/** Returns FollowCamera subobject **/
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 };
 

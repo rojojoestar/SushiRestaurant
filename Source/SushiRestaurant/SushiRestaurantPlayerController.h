@@ -35,8 +35,18 @@ protected:
 	UPROPERTY()
 	UUserWidget* GameOverWidget;
 
+	virtual void BeginPlay() override;
+
+	void OnPossess(APawn* InPawn) override;
+
+	void Tick(float DeltaSeconds) override;
+
 public:
 	UFUNCTION()
 	void HandleMatchEnded();
+
+	// Setup Height Camera (Editable from editor)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera Settings")
+	float CameraFixedHeight = 500.0f; 
 
 };

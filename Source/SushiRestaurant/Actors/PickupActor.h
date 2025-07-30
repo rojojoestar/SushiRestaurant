@@ -5,6 +5,8 @@
 #include "Interface/InteractableInterface.h"
 #include "PickupActor.generated.h"
 
+class URecipeAsset;
+
 // Enumeration for ingredient states
 UENUM(BlueprintType)
 enum class EIngredientState : uint8
@@ -47,9 +49,15 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ingredient")
 	EIngredientState IngredientState = EIngredientState::Raw;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Plate")
+	TSubclassOf<URecipeAsset> FinalDish;
+
 public:
 	// Interaction logic
-	virtual void Interact(APawn* Interactor) override;
+	void Interact_Implementation(APawn* Interactor) override;
+
+	void StopInteract_Implementation(APawn* Interactor) override;
+	
 
 	// Getters
 	EIngredientType GetIngredientType() const { return IngredientType; }

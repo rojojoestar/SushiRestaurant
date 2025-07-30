@@ -55,7 +55,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	// Interact interface implementation
-	virtual void Interact(APawn* Interactor) override;
+	virtual void Interact_Implementation(APawn* Interactor) override;
 
 	// Getters
 	EIngredientTypes GetIngredientTypes() const { return IngredientTypes; }

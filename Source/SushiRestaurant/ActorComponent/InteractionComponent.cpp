@@ -1,6 +1,7 @@
 #include "InteractionComponent.h"
 #include "Interface/InteractableInterface.h"
 #include "GameFramework/Actor.h"
+#include "Actors/PickupActor.h"
 #include "DrawDebugHelpers.h"
 
 UInteractionComponent::UInteractionComponent()
@@ -15,26 +16,68 @@ void UInteractionComponent::BeginPlay()
 
 void UInteractionComponent::TryInteract()
 {
-	if (IInteractable* Interactable = GetInteractableInFront())
+	if (AActor* Interactable = GetInteractableInFront())
 	{
-		Interactable->Interact(Cast<APawn>(GetOwner()));
+		// Verificar explícitamente la interfaz
+		if (Interactable->GetClass()->ImplementsInterface(UInteractable::StaticClass()))
+		{
+			IInteractable::Execute_Interact(Interactable, Cast<APawn>(GetOwner()));
+		}
+		// Opcional: Mensaje de depuración si no implementa
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Actor %s no implementa IInteractable"), *Interactable->GetName());
+		}
 	}
 }
 
-IInteractable* UInteractionComponent::GetInteractableInFront() const
+
+AActor* UInteractionComponent::GetInteractableInFront() const
 {
-	FVector Start = GetOwner()->GetActorLocation();
-	FVector End = Start + GetOwner()->GetActorForwardVector() * 200.f;
+	FVector Start = GetOwner()->GetActorLocation() + FVector(0,0,50.f); // 50cm arriba del suelo
+	FVector End = Start + GetOwner()->GetActorForwardVector() * 200.f;  // 200cm hacia adelante
+	float Radius = 150.f; // más pequeño si quieres precisión
 
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(GetOwner());
+    FHitResult Hit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(GetOwner());
 
-	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+	TArray<FHitResult> Hits;
+	bool bHit = GetWorld()->SweepMultiByChannel(
+		Hits,
+		Start,
+		End,
+		FQuat::Identity,
+		ECC_Visibility,
+		FCollisionShape::MakeSphere(Radius),
+		Params
+	);
+
+	if (bHit)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Hit actor: %s"), *Hit.GetActor()->GetName());
-		return Cast<IInteractable>(Hit.GetActor());
-	}
+		AActor* Closest = nullptr;
+		float MinDist = TNumericLimits<float>::Max();
 
+		for (const FHitResult& HitResult : Hits)
+		{
+			if (APickupActor* Pickup = Cast<APickupActor>(HitResult.GetActor()))
+			{
+				float Dist = FVector::Dist(Start, Pickup->GetActorLocation());
+				if (Dist < MinDist)
+				{
+					MinDist = Dist;
+					Closest = Pickup;
+				}
+			}
+		}
+
+		if (Closest)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Pickup más cercano: %s"), *Closest->GetName());
+			return Closest;
+		}
+	}
 	return nullptr;
 }
+
+

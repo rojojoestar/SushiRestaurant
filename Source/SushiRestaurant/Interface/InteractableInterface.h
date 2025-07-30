@@ -15,5 +15,9 @@ class IInteractable
 	GENERATED_BODY()
 
 public:
-	virtual void Interact(APawn* Interactor) = 0;
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void Interact(APawn* Interactor);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+	void StopInteract(APawn* Interactor);
 };
