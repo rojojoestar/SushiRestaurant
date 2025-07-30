@@ -3,17 +3,15 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Interface/InteractableInterface.h"
-#include "Structs/RecipeData.h"  // ECookwareType & steps
+#include "PickupActor.h"
+#include "Structs/RecipeData.h"
 #include "CookwareStation.generated.h"
 
-class UStaticMeshComponent;
 class UWidgetComponent;
-class USceneComponent;
-class APickupActor;
 
 /**
- * Station that processes a PickupActor according to its type.
- * Example: CuttingBoard turns Fish (Raw) into Fish (Sliced).
+ * CookwareStation: Represents a cooking station (e.g. cutting board, stove)
+ * Can process ingredients when dropped in its DropZone
  */
 UCLASS()
 class ACookwareStation : public AActor, public IInteractable
@@ -21,59 +19,63 @@ class ACookwareStation : public AActor, public IInteractable
 	GENERATED_BODY()
 
 public:
-	// -- Public API --
 	ACookwareStation();
 
-	// IInteractable
-	virtual void Interact_Implementation(APawn* Interactor) override;
+	/** IInteractable: Player can interact with station manually */
+	virtual void Interact(APawn* Interactor);
 
-	/** Receives a pickup dropped by a DropZone (server only). */
+	/** Called by DropZone when a pickup is dropped into the station */
 	void ReceiveDroppedPickup(APickupActor* Pickup);
 
-	/** Optional: if a pickup is already present, start processing. */
+	/** Called by Interact when station already has a pickup */
 	void TryProcessExistingPickup(APawn* Interactor);
 
-	/** Anchor point where the pickup will be visually placed. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Cooking")
+	/** Scene component where ingredients are placed when dropped */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking")
 	USceneComponent* PlacePoint;
 
-	/** Offset for the PlacePoint relative location. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Cooking")
-	FVector PlacePointOffset = FVector(0.f, 0.f, 20.f);
-
 protected:
-	// -- Components --
-	UPROPERTY(VisibleAnywhere, Category="Components")
+	/** Main mesh for the station */
+	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
 
-	UPROPERTY(VisibleAnywhere, Category="UI")
+	/** Widget showing progress (optional) */
+	UPROPERTY(VisibleAnywhere, Category = "UI")
 	UWidgetComponent* ProgressWidget;
 
-	// -- Data --
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Cookware")
-	ECookwareType CookwareType = ECookwareType::CuttingBoard;
+	/** Type of station (used to validate ingredients) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cookware")
+	ECookwareType CookwareType;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Cookware")
-	float ProcessingTime = 2.0f;
+	/** Current ingredient being processed */
+	UPROPERTY(Replicated, VisibleAnywhere, Category = "Cookware")
+	APickupActor* CurrentPickup;
 
-	UPROPERTY(Replicated, VisibleAnywhere, Category="Cookware")
-	APickupActor* CurrentPickup = nullptr;
+	/** Processing state flag */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cookware")
+	bool bIsProcessing;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Cookware")
-	bool bIsProcessing = false;
+	/** Time it takes to process an ingredient */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cookware")
+	float ProcessingTime;
 
-	// -- Internals --
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	/** Offset to adjust PlacePoint position */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking")
+	FVector PlacePointOffset = FVector(0.f, 0.f, 20.f);
 
-	/** Validates if this station can process the given pickup. */
+	/** Timer handle for processing */
+	FTimerHandle ProcessingTimerHandle;
+
+protected:
+	/** Checks if ingredient is valid for this station */
 	bool CanProcessPickup(APickupActor* Pickup) const;
 
-	/** Starts processing timer (server only). */
+	/** Starts the processing timer */
 	void StartProcessing();
 
-	/** Finishes processing and updates pickup state. */
+	/** Called when timer completes, updates ingredient state */
 	void CompleteProcessing();
 
-private:
-	FTimerHandle ProcessingTimerHandle;
+	/** Replication setup */
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

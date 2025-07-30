@@ -111,9 +111,9 @@ void ASushiRestaurantCharacter::DetachCarriedActor()
 
 	CarriedActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
-	if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(CarriedActor->GetComponentByClass(UStaticMeshComponent::StaticClass())))
+	if (UStaticMeshComponent* CarriedMesh = Cast<UStaticMeshComponent>(CarriedActor->GetComponentByClass(UStaticMeshComponent::StaticClass())))
 	{
-		Mesh->SetSimulatePhysics(true);
+		CarriedMesh->SetSimulatePhysics(true);
 	}
 
 	CarriedActor = nullptr;

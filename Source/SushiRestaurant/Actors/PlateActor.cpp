@@ -1,19 +1,20 @@
 #include "PlateActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "SushiRestaurantCharacter.h"
-#include "Actors/IngredientActor.h"   // TODO(next-commit): remove after unifying
-#include "Misc/RecipeAsset.h"
 
-// ---------- Constructor ----------
+/** Constructor */
 APlateActor::APlateActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
+	// Setup plate mesh as root
 	PlateMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlateMesh"));
-	SetRootComponent(PlateMesh);
+	RootComponent = PlateMesh;
+
+	MaxIngredients = 3;
 }
 
-// ---------- IInteractable ----------
+/** Player interacts with the plate */
 void APlateActor::Interact_Implementation(APawn* Interactor)
 {
 	if (!Interactor) return;
@@ -21,65 +22,96 @@ void APlateActor::Interact_Implementation(APawn* Interactor)
 	ASushiRestaurantCharacter* Player = Cast<ASushiRestaurantCharacter>(Interactor);
 	if (!Player) return;
 
-	// If the player is holding a processed ingredient, try to add it
-	if (AIngredientActor* Ingredient = Cast<AIngredientActor>(Player->GetCarriedActor()))
+	// If player is holding an ingredient -> try to add it
+	if (APickupActor* Ingredient = Cast<APickupActor>(Player->GetCarriedActor()))
 	{
 		if (TryAddIngredient(Ingredient))
 		{
-			Player->DetachCarriedActor(); // The ingredient stays attached to the plate
+			// Detach from player after adding
+			Player->DetachCarriedActor();
 		}
-		return;
 	}
-
-	// Empty-handed: pick up the plate
-	if (!Player->GetCarriedActor())
+	// If player is empty-handed -> pick up the plate
+	else if (!Player->GetCarriedActor())
 	{
 		Player->AttachActor(this);
 	}
 }
 
-// ---------- Internals ----------
-bool APlateActor::TryAddIngredient(AIngredientActor* Ingredient)
+void APlateActor::StopInteract_Implementation(APawn* Interactor)
 {
-	if (!Ingredient || Ingredients.Num() >= MaxIngredients) return false;
+	if (!Interactor) return;
 
-	// Only non-raw ingredients allowed
-	if (Ingredient->GetIngredientStates() == EIngredientStates::Raw) return false;
+	ASushiRestaurantCharacter* Character = Cast<ASushiRestaurantCharacter>(Interactor);
+	if (!Character) return;
 
-	Ingredient->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
+	// Detach from character
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	Character->SetCarriedActor(nullptr);
+
+	// Reactivate physics and collision so the plate drops naturally
+	if (UStaticMeshComponent* Mesh = FindComponentByClass<UStaticMeshComponent>())
+	{
+		Mesh->SetSimulatePhysics(true);
+		Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+
+	// Optional: small forward offset to avoid clipping
+	FVector DropLocation = Character->GetActorLocation() + Character->GetActorForwardVector() * 100.f;
+	SetActorLocation(DropLocation);
+}
+
+
+/** Adds ingredient to the plate if processed */
+bool APlateActor::TryAddIngredient(APickupActor* Ingredient)
+{
+	if (!Ingredient || Ingredients.Num() >= MaxIngredients)
+		return false;
+
+	// Do not allow raw ingredients on plate
+	if (Ingredient->GetIngredientState() == EIngredientState::Raw)
+		return false;
+
+	// Attach to plate mesh
+	Ingredient->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepWorldTransform);
 	Ingredients.Add(Ingredient);
 
+	// Track type and reposition visuals
+	CurrentIngredients.Add(Ingredient->GetIngredientType());
 	UpdateIngredientPlacement();
-	CurrentIngredients.Add(static_cast<EIngredientType>(Ingredient->GetIngredientTypes()));
 
 	return true;
 }
 
+/** Returns ingredient types currently on the plate */
 TArray<EIngredientType> APlateActor::GetIngredientsTypes() const
 {
 	return CurrentIngredients;
 }
 
+/** Returns final dish asset if plate is complete */
 URecipeAsset* APlateActor::GetFinalIngredient() const
 {
 	return FinalDish ? FinalDish.GetDefaultObject() : nullptr;
 }
 
+/** Rearranges ingredients visually on the plate */
 void APlateActor::UpdateIngredientPlacement()
 {
 	const float Radius = 15.f;
-	const FVector Center(0.f, 0.f, 10.f);
+	const FVector Center = FVector(0, 0, 10.f);
 
 	for (int32 i = 0; i < Ingredients.Num(); ++i)
 	{
-		const float Angle = (360.f / Ingredients.Num()) * i;
-		const float Rad = FMath::DegreesToRadians(Angle);
-		const FVector Offset(FMath::Cos(Rad) * Radius, FMath::Sin(Rad) * Radius, 10.f);
+		float Angle = (360.f / Ingredients.Num()) * i;
+		FVector Offset = FVector(FMath::Cos(FMath::DegreesToRadians(Angle)) * Radius,
+								 FMath::Sin(FMath::DegreesToRadians(Angle)) * Radius,
+								 10.f);
 
-		if (AActor* const Item = Ingredients[i])
+		if (Ingredients[i])
 		{
-			Item->SetActorRelativeLocation(Center + Offset);
-			Item->SetActorRelativeRotation(FRotator::ZeroRotator);
+			Ingredients[i]->SetActorRelativeLocation(Center + Offset);
+			Ingredients[i]->SetActorRelativeRotation(FRotator::ZeroRotator);
 		}
 	}
 }

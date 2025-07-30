@@ -3,15 +3,13 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Interface/InteractableInterface.h"
+#include "PickupActor.h"
+#include "Misc/RecipeAsset.h"
 #include "PlateActor.generated.h"
 
-class UStaticMeshComponent;
-class URecipeAsset;
-class AIngredientActor;        // TODO(next-commit): remove after unifying into PickupActor
-enum class EIngredientType : uint8;
-
 /**
- * Plate that can hold processed ingredients and be delivered.
+ * PlateActor: Represents a plate that can hold processed ingredients.
+ * Player can interact with it to add ingredients or pick it up.
  */
 UCLASS()
 class APlateActor : public AActor, public IInteractable
@@ -19,46 +17,47 @@ class APlateActor : public AActor, public IInteractable
 	GENERATED_BODY()
 
 public:
-	// -- Public API --
+	/** Constructor */
 	APlateActor();
 
-	// IInteractable
+	/** IInteractable: Called when the player interacts with this plate */
 	virtual void Interact_Implementation(APawn* Interactor) override;
 
-	/** Returns the current ingredient actors on the plate. */
-	const TArray<AIngredientActor*>& GetIngredients() const { return Ingredients; }
+	/** IInteractable: Called when the player Stop interact with this plate */
+	virtual void StopInteract_Implementation(APawn* Interactor) override;
 
-	/** Returns a simplified list of ingredient types. */
+	/** Returns a list of ingredient types currently on the plate */
 	TArray<EIngredientType> GetIngredientsTypes() const;
 
-	/** Returns the final dish asset if this plate represents one. */
+	/** Returns the full recipe asset if this plate is complete */
 	UFUNCTION(BlueprintCallable)
 	URecipeAsset* GetFinalIngredient() const;
 
-	/** Optional: the "final dish" represented by this plate. */
+protected:
+	/** Mesh representing the plate */
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UStaticMeshComponent* PlateMesh;
+
+	/** Holds the current ingredient actors attached to the plate */
+	UPROPERTY(VisibleAnywhere, Category = "Plate")
+	TArray<APickupActor*> Ingredients;
+
+	/** Maximum number of ingredients allowed on the plate */
+	UPROPERTY(EditDefaultsOnly, Category = "Plate")
+	int32 MaxIngredients;
+
+	/** Simplified list of ingredient types for order validation */
+	UPROPERTY(VisibleAnywhere, Category = "Plate")
+	TArray<EIngredientType> CurrentIngredients;
+
+	/** Final dish asset (linked when plate is completed) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Plate")
 	TSubclassOf<URecipeAsset> FinalDish;
 
 protected:
-	// -- Components --
-	UPROPERTY(VisibleAnywhere, Category="Components")
-	UStaticMeshComponent* PlateMesh;
+	/** Adds an ingredient actor to the plate (only if valid) */
+	bool TryAddIngredient(APickupActor* Ingredient);
 
-	// -- Data --
-	UPROPERTY(VisibleAnywhere, Category="Plate")
-	TArray<AIngredientActor*> Ingredients; // TODO(next-commit): switch to APickupActor*
-
-	UPROPERTY(EditDefaultsOnly, Category="Plate")
-	int32 MaxIngredients = 3;
-
-	// -- Internals --
-	/** Attempts to add a processed ingredient to the plate. */
-	bool TryAddIngredient(AIngredientActor* Ingredient);
-
-	/** Layouts ingredients around the plate center. */
+	/** Rearranges ingredient positions visually on the plate */
 	void UpdateIngredientPlacement();
-
-	/** Cached ingredient types for quick validation. */
-	UPROPERTY(VisibleAnywhere, Category="Plate")
-	TArray<EIngredientType> CurrentIngredients;
 };

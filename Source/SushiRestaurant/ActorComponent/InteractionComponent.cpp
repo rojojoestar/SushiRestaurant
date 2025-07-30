@@ -56,13 +56,17 @@ AActor* UInteractionComponent::GetInteractableInFront() const
 
 	for (const FHitResult& HitResult : Hits)
 	{
-		if (const APickupActor* Pickup = Cast<APickupActor>(HitResult.GetActor()))
+		AActor* HitActor = HitResult.GetActor();
+		if (!HitActor) continue;
+
+		// Aceptar cualquier actor que implemente la interfaz IInteractable
+		if (HitActor->GetClass()->ImplementsInterface(UInteractable::StaticClass()))
 		{
-			const float Dist = FVector::Dist(Start, Pickup->GetActorLocation());
+			float Dist = FVector::Dist(Start, HitActor->GetActorLocation());
 			if (Dist < MinDist)
 			{
 				MinDist = Dist;
-				Closest = HitResult.GetActor();
+				Closest = HitActor;
 			}
 		}
 	}
@@ -70,6 +74,7 @@ AActor* UInteractionComponent::GetInteractableInFront() const
 	if (Closest)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Closest pickup: %s"), *Closest->GetName());
+		return Closest;
 	}
 
 	return Closest;
